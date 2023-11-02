@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Enable linting when ready to refactor code
+yarn build
+# yarn lint
+yarn test:unit

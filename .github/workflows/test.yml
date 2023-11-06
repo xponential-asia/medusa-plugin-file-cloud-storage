@@ -27,6 +27,6 @@ jobs:
         shell: bash
         run: yarn
 
-      - name: Testing
+      - name: Unit testing
         shell: bash
-        run: yarn test
+        run: yarn test:unit

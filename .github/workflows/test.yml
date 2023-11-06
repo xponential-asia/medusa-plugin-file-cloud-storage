@@ -10,7 +10,7 @@ jobs:
   test:
     strategy:
       matrix:
-        node-version: [12.x,14.x]
+        node-version: [18.x]
     name: Node
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +27,11 @@ jobs:
         shell: bash
         run: yarn
 
-      - name: Unit testing
+      - name: Unit testing and collect coverage
         shell: bash
         run: yarn test:unit
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4-beta
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

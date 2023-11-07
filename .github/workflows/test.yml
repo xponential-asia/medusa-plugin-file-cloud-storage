@@ -27,6 +27,10 @@ jobs:
         shell: bash
         run: yarn
 
+      - name: Build
+        shell: bash
+        run: yarn build
+
       - name: Unit testing and collect coverage
         shell: bash
         run: yarn test:unit

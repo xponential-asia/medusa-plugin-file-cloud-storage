@@ -24,7 +24,8 @@
     "build": "cross-env npm run clean && tsc -p tsconfig.json",
     "watch": "cross-env tsc --watch",
     "test:unit": "jest --config=jest.config.ts --coverage --passWithNoTests",
-    "prepare": "husky install"
+    "prepare-commit": "husky install",
+    "prepare": "cross-env NODE_ENV=production npm run build"
   },
   "dependencies": {
     "@medusajs/file-local": "^1.0.2",

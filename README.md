@@ -1,6 +1,6 @@
 > :warning: **Warning: This section contains important information.**
 
-WARNING, initial draft! Not ready to use yet.
+Initial draft! Not ready to use yet.
 
 # Google Cloud Storage
 

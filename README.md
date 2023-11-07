@@ -1,70 +1,61 @@
-<p align="center">
-  <a href="https://www.medusajs.com">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/59018053/229103275-b5e482bb-4601-46e6-8142-244f531cebdb.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/59018053/229103726-e5b529a3-9b3f-4970-8a1f-c6af37f087bf.svg">
-    <img alt="Medusa logo" src="https://user-images.githubusercontent.com/59018053/229103726-e5b529a3-9b3f-4970-8a1f-c6af37f087bf.svg">
-    </picture>
-  </a>
-</p>
-<h1 align="center">
-  Medusa
-</h1>
+# Google Cloud Storage
 
-<h4 align="center">
-  <a href="https://docs.medusajs.com">Documentation</a> |
-  <a href="https://www.medusajs.com">Website</a>
-</h4>
+Store uploaded files to your Medusa backend on Google Cloud Storage.
 
-<p align="center">
-  Building blocks for digital commerce
-</p>
-<p align="center">
-  <a href="https://github.com/medusajs/medusa/blob/master/CONTRIBUTING.md">
-    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" alt="PRs welcome!" />
-  </a>
-    <a href="https://www.producthunt.com/posts/medusa"><img src="https://img.shields.io/badge/Product%20Hunt-%231%20Product%20of%20the%20Day-%23DA552E" alt="Product Hunt"></a>
-  <a href="https://discord.gg/xpCwq3Kfn8">
-    <img src="https://img.shields.io/badge/chat-on%20discord-7289DA.svg" alt="Discord Chat" />
-  </a>
-  <a href="https://twitter.com/intent/follow?screen_name=medusajs">
-    <img src="https://img.shields.io/twitter/follow/medusajs.svg?label=Follow%20@medusajs" alt="Follow @medusajs" />
-  </a>
-</p>
+## Features
 
-## Compatibility
+- Store product images on Google Cloud Storage.
+- Support for both private and public buckets.
+- Download/Delete product images on Google Cloud Storage.
+- Get URL product images on Google Cloud Storage.
 
-This starter is compatible with versions >= 1.8.0 of `@medusajs/medusa`. 
+---
 
-## Getting Started
+## Prerequisites
 
-Visit the [Quickstart Guide](https://docs.medusajs.com/create-medusa-app) to set up a server.
+- [Medusa backend](https://docs.medusajs.com/development/backend/install)
+- [Google Cloud Storage](https://cloud.google.com/products/storage/?utm_source=google&utm_medium=cpc&utm_campaign=japac-TH-all-en-dr-BKWS-all-all-trial-PHR-dr-1605216&utm_content=text-ad-none-none-DEV_c-CRE_667077632139-ADGP_Hybrid+%7C+BKWS+-+BRO+%7C+Txt+~+Storage_Cloud+Storage_cloud_main-KWID_43700077632315347-kwd-11012518454&userloc_9074780-network_g&utm_term=KW_google+cloud+storage&gclid=Cj0KCQiAuqKqBhDxARIsAFZELmKbHguAQGtreM23BfmHUZPKuy40DTwH0pG-BERgYZuqea4E0VxmwDAaAivWEALw_wcB&gclsrc=aw.ds&hl=en)
 
-Visit the [Docs](https://docs.medusajs.com/development/backend/prepare-environment) to learn more about our system requirements.
+---
 
-## What is Medusa
+## How to Install
 
-Medusa is a set of commerce modules and tools that allow you to build rich, reliable, and performant commerce applications without reinventing core commerce logic. The modules can be customized and used to build advanced ecommerce stores, marketplaces, or any product that needs foundational commerce primitives. All modules are open-source and freely available on npm.
+1\. Run the following command in the directory of the Medusa backend:
 
-Learn more about [Medusa’s architecture](https://docs.medusajs.com/development/fundamentals/architecture-overview) and [commerce modules](https://docs.medusajs.com/modules/overview) in the Docs.
+  ```bash
+  npm install @xponential/medusa-plugin-file-cloud-storage
+  ```
 
-## Roadmap, Upgrades & Plugins
+2\. Set the following environment backend medusa variables in `.env`:
 
-You can view the planned, started and completed features in the [Roadmap discussion](https://github.com/medusajs/medusa/discussions/categories/roadmap).
+  ```bash
+  GCP_CONFIG=<GCP_CONFIG>
+  ```
 
-Follow the [Upgrade Guides](https://docs.medusajs.com/upgrade-guides/) to keep your Medusa project up-to-date.
+3\. In `medusa-config.js` add the following at the end of the `plugins` array:
 
-Check out all [available Medusa plugins](https://medusajs.com/plugins/).
+  ```js
+  const plugins = [
+    // ...
+    {
+      resolve: `@xponential/medusa-plugin-file-cloud-storage`,
+      options: {
+          GCP_CONFIG: process.env.GCP_CONFIG,
+      },
+    },
+  ]
+  ```
 
-## Community & Contributions
+---
 
-The community and core team are available in [GitHub Discussions](https://github.com/medusajs/medusa/discussions), where you can ask for support, discuss roadmap, and share ideas.
+## Test the Plugin
 
-Join our [Discord server](https://discord.com/invite/medusajs) to meet other community members.
+1\. Run the following command in the directory of the Medusa backend to run the backend:
 
-## Other channels
+  ```bash
+  npm run start
+  ```
 
-- [GitHub Issues](https://github.com/medusajs/medusa/issues)
-- [Twitter](https://twitter.com/medusajs)
-- [LinkedIn](https://www.linkedin.com/company/medusajs)
-- [Medusa Blog](https://medusajs.com/blog/)
+2\. Upload an image for a product using the admin dashboard or using [the Admin APIs](https://docs.medusajs.com/api/admin#tag/Upload).
+
+---

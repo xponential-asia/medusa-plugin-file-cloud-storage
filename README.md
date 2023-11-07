@@ -1,3 +1,7 @@
+> :warning: **Warning: This section contains important information.**
+
+WARNING, initial draft! Not ready to use yet.
+
 # Google Cloud Storage
 
 Store uploaded files to your Medusa backend on Google Cloud Storage.

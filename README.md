@@ -1,6 +1,9 @@
 # Google Cloud Storage
 
 Store uploaded files to your Medusa backend on Google Cloud Storage.
+[![codecov](https://codecov.io/gh/xponential-asia/medusa-plugin-file-cloud-storage/graph/badge.svg?token=TL39AFEH05)](https://codecov.io/gh/xponential-asia/medusa-plugin-file-cloud-storage)
+[![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen.svg)](https://renovatebot.com/)
+[![Build](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/actions/workflows/release.yml)
 
 ## Features
 

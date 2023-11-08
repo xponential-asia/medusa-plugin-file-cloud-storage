@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.1...v1.0.2) (2023-11-08)
+
+
+### Bug Fixes
+
+* **ci:** change scope name and config public package ([fa1f423](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/fa1f42318e6a9ab3179ef0f5b2d07a85587a6fa5))
+
 ## [1.0.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.0...v1.0.1) (2023-11-08)
 
 

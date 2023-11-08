@@ -1,3 +1,13 @@
+## [1.0.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.0...v1.0.1) (2023-11-08)
+
+
+### Bug Fixes
+
+* **ci:** add permission to semantic release push tag ([1042864](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/1042864af312b28b920e27621400eb1a0e959ad2))
+* **ci:** edit action release workflow ([f585233](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/f5852331a2d471cdc666465f1eac5c2984a2f87c))
+* **ci:** edit node version before semantic release process ([4657e72](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/4657e72bffa2f8d1646e8a158d14012a89486024))
+* **ci:** permission semantic release and node version ([82b31cd](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/82b31cdc59d1631f39f47a55351f59fd9c55ce4b))
+
 # 1.0.0 (2023-11-08)
 
 

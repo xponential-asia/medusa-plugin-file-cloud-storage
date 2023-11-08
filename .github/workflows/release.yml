@@ -5,8 +5,7 @@ on:
   push:
     branches:
       - main
-      - fix/test-ci
-
+      
 jobs:
   build:
     runs-on: ubuntu-latest

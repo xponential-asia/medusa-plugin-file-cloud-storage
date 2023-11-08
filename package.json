@@ -17,7 +17,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xponential-asia/medusa-plugin-file-cloud-storage"
+    "url": "https://github.com/xponential-asia/medusa-plugin-file-cloud-storage.git"
   },
   "scripts": {
     "clean": "cross-env rimraf dist",

@@ -26,7 +26,7 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
 
 ---
 
-## How to Install
+## How to Install Plugin
 
 1\. Run the following command in the directory of the Medusa backend:
 

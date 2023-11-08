@@ -1,3 +1,14 @@
+## [1.0.3](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.2...v1.0.3) (2023-11-08)
+
+
+### Bug Fixes
+
+* **ci:** delete scope package ([cbaa155](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/cbaa155850d4d7cc14293b6d05a52c715f64c462))
+* **ci:** edit config repository in package.json file ([6109f41](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/6109f418e4b2d7fca86662d5ec9f17332a705d74))
+* **ci:** public false in semantic release config ([51b23cb](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/51b23cbd111cfa6d19298347ac5738908e073896))
+* **ci:** publish package to registry.npmjs.org ([334c30e](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/334c30e1b698891bd126ea171bcffe5277e47262))
+* env variable ([1448ee9](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/1448ee986d389cd26a5a084c6f57575fdc79ae61))
+
 ## [1.0.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.1...v1.0.2) (2023-11-08)
 
 

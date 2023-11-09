@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.0...v1.0.1) (2023-11-09)
+
+
+### Bug Fixes
+
+* edit command npm publish ([1354b49](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/1354b49b09e251a26415270ffcb5ba97ce14c60c))
+
 # 1.0.0 (2023-11-09)
 
 

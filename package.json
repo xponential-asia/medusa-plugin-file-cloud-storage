@@ -1,5 +1,5 @@
 {
-  "name": "medusa-plugin-file-cloud-storage",
+  "name": "@xponential-asia/medusa-plugin-file-cloud-storage",
   "version": "1.0.0",
   "description": "A Medusa plugin to store files in Google Cloud Storage",
   "keywords": [
@@ -96,5 +96,8 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   }
 }

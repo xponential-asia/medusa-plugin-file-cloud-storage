@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.1...v1.0.2) (2023-11-09)
+
+
+### Bug Fixes
+
+* **ci:** typo cmd ([0bb2c75](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/0bb2c75c8c484d27e6dc3b64a58ecd930f94cd13))
+
 ## [1.0.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.0...v1.0.1) (2023-11-09)
 
 

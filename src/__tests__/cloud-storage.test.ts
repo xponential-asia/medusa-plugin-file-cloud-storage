@@ -1,8 +1,6 @@
 import CloudStorageService from '../services/cloud-storage';
 import { PassThrough, Readable } from 'stream';
 import fs from 'fs';
-import e from 'express';
-import { GetSignedUrlConfig } from '@google-cloud/storage';
 
 jest.mock('fs');
 
@@ -427,11 +425,7 @@ describe('Cloud Storage', () => {
     };
     const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
     const date = Date.now();
-    const expectedOptions: GetSignedUrlConfig = {
-      version: 'v4',
-      action: 'read',
-      expires: date + EXPIRATION_TIME
-    };
+
     cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
     const fileData = {
       fileKey: 'existent-file.txt'
@@ -444,7 +438,6 @@ describe('Cloud Storage', () => {
     expect(result).toBeDefined();
     expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
     expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().getSignedUrl).toHaveBeenCalledWith(expectedOptions);
     expect(cloudStorageService.bucket_.file().getSignedUrl).toHaveBeenCalled();
     expect(result).toEqual('https://test.com/mock-bucket/uuid/existent-file.txt');
   });

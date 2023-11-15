@@ -54,7 +54,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         key: file.cloudStorageURI.href
       };
     } catch (error) {
-      throw new Error(`Upload file to bucket error: ${error}`);
+      throw new Error(error.message);
     }
   }
 
@@ -124,16 +124,10 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         url = await file.publicUrl();
       }
 
-      // const promise = new Promise(() => {
-      //   pipe.on('finish', () => {
-      //   });
-      //   pipe.on('error', (err) => {
-      //   });
-      // });
       const promise = new Promise((res, rej) => {
-        pipe.on("finish", res)
-        pipe.on("error", rej)
-      })
+        pipe.on('finish', res);
+        pipe.on('error', rej);
+      });
       return {
         writeStream: pass,
         promise,
@@ -173,9 +167,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         version: 'v4',
         action: 'read',
         expires: Date.now() + EXPIRATION_TIME
-      }
+      };
       const [url] = await file.getSignedUrl(options);
-      return url
+      return url;
     } catch (error) {
       throw new Error(`Download stream file error: ${error}`);
     }

@@ -6,6 +6,10 @@ jest.mock('fs');
 
 describe('Cloud Storage', () => {
   const rootBucketName = 'mock-bucket';
+  const credentials = {
+    client_email: 'test-client_email',
+    private_key: 'test-private_key'
+  }
 
   let cloudStorageService;
   beforeEach(() => {
@@ -16,7 +20,7 @@ describe('Cloud Storage', () => {
     };
 
     // Create an instance of CloudStorageService with mock options
-    cloudStorageService = new CloudStorageService({ logger }, { bucketName: rootBucketName });
+    cloudStorageService = new CloudStorageService({ logger }, { credentials , bucketName: rootBucketName });
   });
 
   it('should be able to upload file to cloud storage with publicRead', async () => {

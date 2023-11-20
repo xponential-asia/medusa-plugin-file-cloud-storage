@@ -1,6 +1,6 @@
 {
   "name": "@xponential-asia/medusa-plugin-file-cloud-storage",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "A Medusa plugin to store files in Google Cloud Storage",
   "keywords": [
     "medusa-plugin",

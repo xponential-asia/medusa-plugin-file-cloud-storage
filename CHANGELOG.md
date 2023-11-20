@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.2...v1.1.0) (2023-11-20)
+
+
+### Bug Fixes
+
+* promise return value is unhandle ([3a4d7df](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/3a4d7df2b47a031c60a38605bfccb8d4a151ec66))
+* **test:** Bug unit test file missing option credential ([77b3ca7](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/77b3ca7002acb317ead2d9a10d44b11a4f86901c))
+
+
+### Features
+
+* Implement fn working with gcp storage ([fbcbc15](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/fbcbc15984848b81b0d9cb86641c7c52612e21fd))
+
 ## [1.0.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.1...v1.0.2) (2023-11-09)
 
 

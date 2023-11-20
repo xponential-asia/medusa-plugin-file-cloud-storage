@@ -37,7 +37,8 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
 2\. Set the following environment backend medusa variables in `.env`:
 
   ```bash
-  GCP_CONFIG=<GCP_CONFIG>
+  client_email=<client_email>
+  private_key=<private_key>
   ```
 
 3\. In `medusa-config.js` add the following at the end of the `plugins` array:
@@ -48,7 +49,8 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
     {
       resolve: `@xponential/medusa-plugin-file-cloud-storage`,
       options: {
-          GCP_CONFIG: process.env.GCP_CONFIG,
+          client_email: process.env.client_email,
+          private_key: process.env.private_key
       },
     },
   ]

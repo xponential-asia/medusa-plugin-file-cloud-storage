@@ -22,8 +22,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     //setup storage client
     this.storage_ = new Storage({
       credentials: {
-        client_email: options.client_email,
-        private_key: options.private_key
+        client_email: options.credentials.client_email,
+        private_key: options.credentials.private_key
       }
     });
     this.bucketName_ = options.bucketName;
@@ -47,7 +47,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         public: true
       });
       //get content of file
-      const file = result[0];
+      const [file] = result;
       const publicUrl = await file.publicUrl();
       return {
         url: publicUrl,
@@ -67,7 +67,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         private: true
       });
       //get content of file
-      const file = result[0];
+      const [file] = result;
       const url = file.cloudStorageURI.href; //gs://skyshift-medusa-dev/3fc54eb0-09f7-427a-9b03-b936b4254779/README.md
       return {
         url: url,
@@ -82,8 +82,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       //search file in bucket
       const file = this.bucket_.file(fileData.fileKey);
-      const isExist = await file.exists();
-      if (isExist[0]) {
+      const [isExist] = await file.exists();
+      if (isExist) {
         //delete
         await file.delete();
         return;
@@ -142,8 +142,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async getDownloadStream(fileData: GetUploadedFileType): Promise<NodeJS.ReadableStream> {
     try {
       const file = this.bucket_.file(fileData.fileKey);
-      const isExist = await file.exists();
-      if (!isExist[0]) {
+      const [isExist] = await file.exists();
+      if (!isExist) {
         //Not found file
         throw new Error('Not found file.');
       }
@@ -157,8 +157,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
       const file = this.bucket_.file(fileData.fileKey);
-      const isExist = await file.exists();
-      if (!isExist[0]) {
+      const [isExist] = await file.exists();
+      if (!isExist) {
         //Not found file
         throw new Error('Not found file.');
       }

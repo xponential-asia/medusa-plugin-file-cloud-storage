@@ -36,7 +36,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          registry-url: 'https://npm.pkg.github.com/'
+          registry-url: 'https://registry.npmjs.org/'
           cache: 'yarn'
       - name: Install dependencies
         run: yarn
@@ -46,6 +46,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish package to NPM 📦
-        run: npm publish --access public
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -39,6 +39,7 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
   ```bash
   CLIENT_EMAIL=<CLIENT_EMAIL>
   PRIVATE_KEY=<PRIVATE_KEY>
+  BUCKET_NAME=<PRIVATE_KEY>
   ```
 
 3\. In `medusa-config.js` add the following at the end of the `plugins` array:

@@ -27,7 +27,7 @@ describe('Cloud Storage', () => {
     //Mock file data
     const fileData = {
       path: 'src/__tests__/test-files/test-file-1.txt',
-      filename: 'test-file-1.txt'
+      originalname: 'test-file-1.txt'
     } as Express.Multer.File;
 
     // Mock the necessary parts of the @google-cloud/storage library
@@ -35,7 +35,7 @@ describe('Cloud Storage', () => {
       {
         publicUrl: jest.fn().mockResolvedValue('https://test.com/mock-bucket/uuid/test-file-1.txt'),
         cloudStorageURI: {
-          href: `gs://${rootBucketName}/uuid/${fileData.filename}`
+          href: `gs://${rootBucketName}/uuid/${fileData.originalname}`
         }
       }
     ]);
@@ -59,7 +59,7 @@ describe('Cloud Storage', () => {
     );
     expect(result).toMatchObject({
       url: 'https://test.com/mock-bucket/uuid/test-file-1.txt',
-      key: `gs://${rootBucketName}/uuid/${fileData.filename}`
+      key: `gs://${rootBucketName}/uuid/${fileData.originalname}`
     });
   });
 
@@ -72,7 +72,7 @@ describe('Cloud Storage', () => {
     // Mock Express.Multer.File object
     const mockFileData = {
       path: 'src/__tests__/mock-file.jpg',
-      filename: 'mock-file.jpg'
+      originalname: 'mock-file.jpg'
     };
 
     // Use expect().rejects.toThrow to assert that the upload method throws an error
@@ -85,12 +85,12 @@ describe('Cloud Storage', () => {
     // Mock Express.Multer.File object
     const mockFileData = {
       path: 'src/__tests__/mock-file.jpg',
-      filename: 'mock-file.jpg'
+      originalname: 'mock-file.jpg'
     };
     cloudStorageService.bucket_.upload = jest.fn().mockResolvedValue([
       {
         cloudStorageURI: {
-          href: `gs://${rootBucketName}/uuid/${mockFileData.filename}`
+          href: `gs://${rootBucketName}/uuid/${mockFileData.originalname}`
         }
       }
     ]);
@@ -106,7 +106,7 @@ describe('Cloud Storage', () => {
       destination: expect.stringContaining('mock-file.jpg'),
       private: true
     });
-    const expectedResult = `gs://${rootBucketName}/uuid/${mockFileData.filename}`;
+    const expectedResult = `gs://${rootBucketName}/uuid/${mockFileData.originalname}`;
     expect(result).toEqual({
       url: expectedResult,
       key: expectedResult
@@ -122,7 +122,7 @@ describe('Cloud Storage', () => {
     // Mock Express.Multer.File object
     const mockFileData = {
       path: 'src/__tests__/mock-file.jpg',
-      filename: 'mock-file.jpg'
+      originalname: 'mock-file.jpg'
     };
 
     // Use expect().rejects.toThrow to assert that the upload method throws an error
@@ -132,10 +132,10 @@ describe('Cloud Storage', () => {
   });
 
   it('should be able to delete file from cloud storage', async () => {
-    const filename = 'mock-file.jpg';
+    const originalname = 'mock-file.jpg';
     const mockFileData = {
-      fileKey: `uuid/${filename}`,
-      filename
+      fileKey: `uuid/${originalname}`,
+      originalname
     };
 
     // Mock the bucket and file objects
@@ -151,7 +151,7 @@ describe('Cloud Storage', () => {
     await cloudStorageService.delete(mockFileData);
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(`uuid/${filename}`);
+    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(`uuid/${originalname}`);
     expect(mockObjFile.exists).toHaveBeenCalled();
     expect(mockObjFile.delete).toHaveBeenCalled();
   });

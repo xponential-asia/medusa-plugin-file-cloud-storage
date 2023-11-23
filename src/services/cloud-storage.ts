@@ -40,7 +40,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       //key for use identifier when client get this
       const key = uuidv4();
       const result = await this.bucket_.upload(fileData.path, {
-        destination: `${key}/${fileData.filename}`,
+        destination: `${key}/${fileData.originalname}`,
         metadata: {
           predefinedAcl: 'publicRead'
         },
@@ -63,7 +63,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       // //key for use identifier when client get this
       const key = uuidv4();
       const result = await this.bucket_.upload(fileData.path, {
-        destination: `${key}/${fileData.filename}`,
+        destination: `${key}/${fileData.originalname}`,
         private: true
       });
       //get content of file
@@ -88,7 +88,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         await file.delete();
         return;
       } else {
-        //not foudn file
+        //not found file
         throw new Error('Not found file.');
       }
     } catch (error) {

@@ -39,8 +39,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       //key for use identifier when client get this
       const key = uuidv4();
+      const destination = `${key}/${fileData.originalname}`;
       const result = await this.bucket_.upload(fileData.path, {
-        destination: `${key}/${fileData.originalname}`,
+        destination,
         metadata: {
           predefinedAcl: 'publicRead'
         },
@@ -51,7 +52,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const publicUrl = await file.publicUrl();
       return {
         url: publicUrl,
-        key: file.cloudStorageURI.href
+        key: destination
       };
     } catch (error) {
       throw new Error(error.message);
@@ -62,8 +63,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       // //key for use identifier when client get this
       const key = uuidv4();
+      const destination = `${key}/${fileData.originalname}`;
       const result = await this.bucket_.upload(fileData.path, {
-        destination: `${key}/${fileData.originalname}`,
+        destination,
         private: true
       });
       //get content of file
@@ -71,7 +73,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const url = file.cloudStorageURI.href; //gs://skyshift-medusa-dev/3fc54eb0-09f7-427a-9b03-b936b4254779/README.md
       return {
         url: url,
-        key: url
+        key: destination
       };
     } catch (error) {
       throw new Error(`Upload protected file to bucket error: ${error}`);

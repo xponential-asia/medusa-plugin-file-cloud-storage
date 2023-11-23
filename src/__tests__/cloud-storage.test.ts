@@ -1,7 +1,11 @@
 import CloudStorageService from '../services/cloud-storage';
 import { PassThrough, Readable } from 'stream';
 import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
+// Mock the entire uuid module
+jest.mock('uuid');
+// Mock the entire fs module
 jest.mock('fs');
 
 describe('Cloud Storage', () => {
@@ -29,6 +33,9 @@ describe('Cloud Storage', () => {
       path: 'src/__tests__/test-files/test-file-1.txt',
       originalname: 'test-file-1.txt'
     } as Express.Multer.File;
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
 
     // Mock the necessary parts of the @google-cloud/storage library
     cloudStorageService.bucket_.upload = jest.fn().mockResolvedValue([
@@ -59,7 +66,7 @@ describe('Cloud Storage', () => {
     );
     expect(result).toMatchObject({
       url: 'https://test.com/mock-bucket/uuid/test-file-1.txt',
-      key: `gs://${rootBucketName}/uuid/${fileData.originalname}`
+      key: `uuid-value/${fileData.originalname}`
     });
   });
 
@@ -87,6 +94,9 @@ describe('Cloud Storage', () => {
       path: 'src/__tests__/mock-file.jpg',
       originalname: 'mock-file.jpg'
     };
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     cloudStorageService.bucket_.upload = jest.fn().mockResolvedValue([
       {
         cloudStorageURI: {
@@ -109,7 +119,7 @@ describe('Cloud Storage', () => {
     const expectedResult = `gs://${rootBucketName}/uuid/${mockFileData.originalname}`;
     expect(result).toEqual({
       url: expectedResult,
-      key: expectedResult
+      key: `uuid-value/${mockFileData.originalname}`
     });
   });
 

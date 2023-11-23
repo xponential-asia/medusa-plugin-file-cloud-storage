@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.0...v1.2.1) (2023-11-23)
+
+
+### Bug Fixes
+
+* change param filename to original filename ([d516617](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/d51661789c76a253688fd7cd5874babf951afe75))
+
 # [1.2.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.1.0...v1.2.0) (2023-11-23)
 
 

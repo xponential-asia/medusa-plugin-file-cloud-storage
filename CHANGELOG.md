@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.1.0...v1.2.0) (2023-11-23)
+
+
+### Features
+
+* **ci:** change npm github to npmjs ([2f964fe](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/2f964fea02ad587e153bd483fa7f0b1e14650659))
+
 # [1.1.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.0.2...v1.1.0) (2023-11-20)
 
 

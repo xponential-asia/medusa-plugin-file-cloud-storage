@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.1...v1.2.2) (2023-11-24)
+
+
+### Bug Fixes
+
+* edit response file key ([accac96](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/accac96751086d0729045cb03ebcb328cf1dd591))
+
 ## [1.2.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.0...v1.2.1) (2023-11-23)
 
 

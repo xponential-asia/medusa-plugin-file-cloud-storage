@@ -31,7 +31,7 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
 1\. Run the following command in the directory of the Medusa backend:
 
   ```bash
-  npm install @xponential/medusa-plugin-file-cloud-storage
+  npm install medusa-plugin-file-cloud-storage
   ```
 
 2\. Set the following environment backend medusa variables in `.env`:
@@ -48,7 +48,7 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
   const plugins = [
     // ...
     {
-      resolve: `@xponential/medusa-plugin-file-cloud-storage`,
+      resolve: `medusa-plugin-file-cloud-storage`,
       options: {
           credentials : {
             client_email: process.env.CLIENT_EMAIL,

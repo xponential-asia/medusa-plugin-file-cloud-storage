@@ -1,4 +1,5 @@
 import { AbstractFileService, IFileService, Logger } from '@medusajs/medusa';
+import { MedusaError } from '@medusajs/utils';
 import {
   FileServiceUploadResult,
   DeleteFileType,
@@ -55,7 +56,10 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         key: destination
       };
     } catch (error) {
-      throw new Error(error.message);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        error?.message || 'Upload file to bucket error.'
+      );
     }
   }
 
@@ -76,7 +80,10 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         key: destination
       };
     } catch (error) {
-      throw new Error(`Upload protected file to bucket error: ${error}`);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        error?.message || 'Upload protected file to bucket error.'
+      );
     }
   }
 
@@ -91,10 +98,15 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         return;
       } else {
         //not found file
-        throw new Error('Not found file.');
+        throw new MedusaError(
+          MedusaError.Types.NOT_FOUND, 'Not found file.'
+        );
       }
     } catch (error) {
-      throw new Error(`Delete file error: ${error}`);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        error?.message || 'Delete file error.'
+      );
     }
   }
 
@@ -137,7 +149,10 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         fileKey: parsedFile
       };
     } catch (error) {
-      throw new Error(`Upload file stream error: ${error}`);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        error?.message || 'Upload file stream error.'
+      );
     }
   }
 
@@ -147,11 +162,16 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
-        throw new Error('Not found file.');
+        throw new MedusaError(
+          MedusaError.Types.NOT_FOUND, 'Not found file.'
+        );
       }
       return file.createReadStream();
     } catch (error) {
-      throw new Error(`Download stream file error: ${error}`);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        error?.message || 'Download stream file error.'
+      );
     }
   }
 
@@ -162,7 +182,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
-        throw new Error('Not found file.');
+        throw new MedusaError(
+          MedusaError.Types.NOT_FOUND, 'Not found file.'
+        );
       }
       //config for generate url
       const options: GetSignedUrlConfig = {
@@ -173,7 +195,10 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const [url] = await file.getSignedUrl(options);
       return url;
     } catch (error) {
-      throw new Error(`Download stream file error: ${error}`);
+      throw new MedusaError(
+        MedusaError.Types.UNEXPECTED_STATE,
+        error?.message || 'Download stream file error.'
+      );
     }
   }
 }

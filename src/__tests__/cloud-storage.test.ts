@@ -197,7 +197,7 @@ describe('Cloud Storage', () => {
     // Call the delete method
     await expect(() =>
       cloudStorageService.delete({ fileKey: 'test-file-key.txt' })
-    ).rejects.toThrow('Delete file error: Error: Delete failed');
+    ).rejects.toThrow('Delete failed');
 
     // Assertions
     expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('test-file-key.txt');
@@ -319,7 +319,7 @@ describe('Cloud Storage', () => {
       file: jest.fn().mockReturnValue(mockFile)
     };
     await expect(() => cloudStorageService.getUploadStreamDescriptor(fileData)).rejects.toThrow(
-      'Upload file stream error'
+      'Mocked createReadStream error'
     );
 
     // Assertions
@@ -357,7 +357,7 @@ describe('Cloud Storage', () => {
       file: jest.fn().mockReturnValue(mockFile)
     };
     await expect(() => cloudStorageService.getUploadStreamDescriptor(fileData)).rejects.toThrow(
-      'Upload file stream error'
+      'Mocked createReadStream error'
     );
 
     // Assertions

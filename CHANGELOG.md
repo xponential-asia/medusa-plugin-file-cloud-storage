@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.2...v1.2.3) (2023-11-27)
+
+
+### Bug Fixes
+
+* throw error with MedusaError ([e09adae](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/e09adae4e5a051bc80fd91dbb672add3078154cf))
+
 ## [1.2.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.1...v1.2.2) (2023-11-24)
 
 

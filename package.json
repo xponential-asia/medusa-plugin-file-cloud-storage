@@ -1,6 +1,6 @@
 {
   "name": "medusa-plugin-file-cloud-storage",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A Medusa plugin to store files in Google Cloud Storage",
   "main": "index.js",
   "keywords": [

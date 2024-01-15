@@ -72,9 +72,16 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         destination,
         private: true
       });
+      //config for generate url
+      const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
+      const options: GetSignedUrlConfig = {
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + EXPIRATION_TIME
+      };
       //get content of file
       const [file] = result;
-      const url = file.cloudStorageURI.href; //gs://skyshift-medusa-dev/3fc54eb0-09f7-427a-9b03-b936b4254779/README.md
+      const [url] = await file.getSignedUrl(options);
       return {
         url: url,
         key: destination

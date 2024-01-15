@@ -13,7 +13,7 @@ describe('Cloud Storage', () => {
   const credentials = {
     client_email: 'test-client_email',
     private_key: 'test-private_key'
-  }
+  };
 
   let cloudStorageService;
   beforeEach(() => {
@@ -24,7 +24,10 @@ describe('Cloud Storage', () => {
     };
 
     // Create an instance of CloudStorageService with mock options
-    cloudStorageService = new CloudStorageService({ logger }, { credentials , bucketName: rootBucketName });
+    cloudStorageService = new CloudStorageService(
+      { logger },
+      { credentials, bucketName: rootBucketName }
+    );
   });
 
   it('should be able to upload file to cloud storage with publicRead', async () => {
@@ -99,9 +102,7 @@ describe('Cloud Storage', () => {
 
     cloudStorageService.bucket_.upload = jest.fn().mockResolvedValue([
       {
-        cloudStorageURI: {
-          href: `gs://${rootBucketName}/uuid/${mockFileData.originalname}`
-        }
+        getSignedUrl: jest.fn().mockResolvedValue(['https://test.com/mock-bucket/uuid/mock-file.jpg']),
       }
     ]);
 
@@ -116,9 +117,8 @@ describe('Cloud Storage', () => {
       destination: expect.stringContaining('mock-file.jpg'),
       private: true
     });
-    const expectedResult = `gs://${rootBucketName}/uuid/${mockFileData.originalname}`;
     expect(result).toEqual({
-      url: expectedResult,
+      url: 'https://test.com/mock-bucket/uuid/mock-file.jpg',
       key: `uuid-value/${mockFileData.originalname}`
     });
   });

@@ -1,3 +1,10 @@
+## [1.2.5](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.4...v1.2.5) (2024-01-15)
+
+
+### Bug Fixes
+
+* change private upload with sign url ([966787a](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/966787a3925beb7ed8dee1e507e353bd22996db6))
+
 ## [1.2.4](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.3...v1.2.4) (2023-11-29)
 
 

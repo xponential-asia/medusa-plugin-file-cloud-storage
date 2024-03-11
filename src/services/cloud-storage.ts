@@ -10,7 +10,8 @@ import {
 import { Storage, Bucket, GetSignedUrlConfig } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
-import stream from 'stream';
+import stream, { Readable, PassThrough } from 'stream';
+import { UploadStreamDescriptorWithPathType, UploadedJsonType } from '../types/upload-binary';
 class CloudStorageService extends AbstractFileService implements IFileService {
   protected logger_: Logger;
   protected storage_: Storage;
@@ -105,9 +106,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         return;
       } else {
         //not found file
-        throw new MedusaError(
-          MedusaError.Types.NOT_FOUND, 'Not found file.'
-        );
+        throw new MedusaError(MedusaError.Types.NOT_FOUND, 'Not found file.');
       }
     } catch (error) {
       throw new MedusaError(
@@ -169,9 +168,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
-        throw new MedusaError(
-          MedusaError.Types.NOT_FOUND, 'Not found file.'
-        );
+        throw new MedusaError(MedusaError.Types.NOT_FOUND, 'Not found file.');
       }
       return file.createReadStream();
     } catch (error) {
@@ -189,9 +186,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
-        throw new MedusaError(
-          MedusaError.Types.NOT_FOUND, 'Not found file.'
-        );
+        throw new MedusaError(MedusaError.Types.NOT_FOUND, 'Not found file.');
       }
       //config for generate url
       const options: GetSignedUrlConfig = {
@@ -207,6 +202,94 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         error?.message || 'Download stream file error.'
       );
     }
+  }
+
+  async uploadStreamJson(fileData: UploadedJsonType): Promise<FileServiceUploadResult> {
+    const jsonString = JSON.stringify(fileData.data);
+    const buffer = Buffer.from(jsonString);
+    const stream = Readable.from(buffer);
+    //force extension to .json
+    const extension = '.json';
+    //force file name to be the same as the original name
+    const fileName = fileData.name.replace(/\.[^/.]+$/, '');
+    const destination = `${fileData.path}/${fileName}${extension}`;
+    const file = this.bucket_.file(destination);
+    const isPrivate = fileData?.isPrivate;
+    const options = {
+      metadata: {
+        predefinedAcl: isPrivate ? 'private' : 'publicRead'
+      },
+      private: isPrivate,
+      public: !isPrivate
+    };
+    //make file streaming
+    const pipe = stream.pipe(file.createWriteStream(options));
+    const pass = new PassThrough();
+    stream.pipe(pass);
+    const promise = new Promise((res, rej) => {
+      pipe.on('finish', res);
+      pipe.on('error', rej);
+    });
+    await promise;
+    //Get url of file
+    let url: string;
+    if (isPrivate) {
+      url = file.cloudStorageURI.href;
+    } else {
+      url = await file.publicUrl();
+    }
+    return {
+      url,
+      key: destination
+    };
+  }
+
+  async uploadStream(
+    fileDetail: UploadStreamDescriptorWithPathType,
+    arrayBuffer: WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>
+  ): Promise<FileServiceUploadResult> {
+    const buffer = Buffer.from(arrayBuffer);
+    const stream = Readable.from(buffer);
+    let fileName = fileDetail.name.replace(/\.[^/.]+$/, '');
+    fileName = fileDetail.ext ? `${fileName}.${fileDetail.ext}` : fileName;
+    //check file name don't have extension
+    if (!fileDetail.ext && fileName.indexOf('.') === -1) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        'File name must have extension.'
+      );
+    }
+    const destination = `${fileDetail.path}/${fileName}`;
+    //init file into the bucket *fileData.name include sub-bucket
+    const file = this.bucket_.file(destination);
+    const isPrivate = fileDetail?.isPrivate;
+    const options = {
+      metadata: {
+        predefinedAcl: isPrivate ? 'private' : 'publicRead'
+      },
+      private: isPrivate,
+      public: !isPrivate
+    };
+    //make file streaming
+    const pipe = stream.pipe(file.createWriteStream(options));
+    const pass = new PassThrough();
+    stream.pipe(pass);
+    const promise = new Promise((res, rej) => {
+      pipe.on('finish', res);
+      pipe.on('error', rej);
+    });
+    await promise;
+    //Get url of file
+    let url: string;
+    if (isPrivate) {
+      url = file.cloudStorageURI.href;
+    } else {
+      url = await file.publicUrl();
+    }
+    return {
+      url,
+      key: destination
+    };
   }
 }
 

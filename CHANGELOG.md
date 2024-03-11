@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.5...v1.3.0) (2024-03-11)
+
+
+### Features
+
+* add service upload json data and stream data ([f43c3ef](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/f43c3ef44937259905dbd24b266de10fb8d71ce4))
+
 ## [1.2.5](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.4...v1.2.5) (2024-01-15)
 
 

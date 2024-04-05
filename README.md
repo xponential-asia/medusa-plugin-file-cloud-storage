@@ -30,7 +30,7 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
   npm install medusa-plugin-file-cloud-storage
   ```
 
-2\. Set the following environment backend medusa variables in `.env`:
+2\. Set the following environment backend medusa variables in `.env`. If you are deploying to a GCP product that supports Application Default credentials, you can leave `CLIENT_EMAIL` and `PRIVATE_KEY` this omitted, and authentication will work automatically.:
 
   ```bash
   CLIENT_EMAIL=<CLIENT_EMAIL>

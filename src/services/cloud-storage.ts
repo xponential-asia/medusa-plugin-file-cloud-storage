@@ -22,12 +22,18 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     super({}, options);
     this.logger_ = logger;
     //setup storage client
-    this.storage_ = new Storage({
-      credentials: {
-        client_email: options.credentials.client_email,
-        private_key: options.credentials.private_key
-      }
-    });
+    if (options.credentials) {
+      this.storage_ = new Storage({
+        credentials: {
+          client_email: options.credentials.client_email,
+          private_key: options.credentials.private_key
+        }
+      });
+    } else {
+      //Use Application Default credentials
+      this.storage_ = new Storage();
+    }
+   
     this.bucketName_ = options.bucketName;
     this.bucket_ = this.storage_.bucket(this.bucketName_);
   }

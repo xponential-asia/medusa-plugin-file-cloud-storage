@@ -9,6 +9,67 @@ jest.mock('uuid');
 // Mock the entire fs module
 jest.mock('fs');
 
+describe('Cloud Storage Application Default credentials', () => {
+  const rootBucketName = 'mock-bucket';
+  const credentials = null;
+  let cloudStorageServiceDefaultApplicationCredentials;
+  beforeEach(() => {
+    // Mock the logger
+    const logger = {
+      info: jest.fn(),
+      error: jest.fn()
+    };
+
+    // Create an instance of CloudStorageService with mock options
+    cloudStorageServiceDefaultApplicationCredentials = new CloudStorageService(
+      { logger },
+      { credentials, bucketName: rootBucketName }
+    );
+  });
+  it('should be able to upload file to cloud storage with publicRead', async () => {
+    //Mock file data
+    const fileData = {
+      path: 'src/__tests__/test-files/test-file-1.txt',
+      originalname: 'test-file-1.txt'
+    } as Express.Multer.File;
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
+    // Mock the necessary parts of the @google-cloud/storage library
+    cloudStorageServiceDefaultApplicationCredentials.bucket_.upload = jest.fn().mockResolvedValue([
+      {
+        publicUrl: jest.fn().mockResolvedValue('https://test.com/mock-bucket/uuid/test-file-1.txt'),
+        cloudStorageURI: {
+          href: `gs://${rootBucketName}/uuid/${fileData.originalname}`
+        }
+      }
+    ]);
+
+    //Call upload function
+    const result = await cloudStorageServiceDefaultApplicationCredentials.upload(fileData);
+
+    // Assertions based on your implementation
+    expect(result).toBeDefined();
+    expect(result.url).toBeDefined();
+    expect(result.key).toBeDefined();
+    expect(cloudStorageServiceDefaultApplicationCredentials.bucket_.upload).toHaveBeenCalledWith(
+      'src/__tests__/test-files/test-file-1.txt',
+      {
+        destination: expect.stringContaining('test-file-1.txt'),
+        metadata: {
+          predefinedAcl: 'publicRead'
+        },
+        public: true
+      }
+    );
+    expect(result).toMatchObject({
+      url: 'https://test.com/mock-bucket/uuid/test-file-1.txt',
+      key: `uuid-value/${fileData.originalname}`
+    });
+  });
+});
+
 describe('Cloud Storage', () => {
   const rootBucketName = 'mock-bucket';
   const credentials = {

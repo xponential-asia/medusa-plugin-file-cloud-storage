@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.3.0...v1.4.0) (2024-04-05)
+
+
+### Features
+
+* support default application credential in GCP product ([fbc7253](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/fbc72532ff2efdf4c630310ba3a3deda56342b60))
+
 # [1.3.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.2.5...v1.3.0) (2024-03-11)
 
 

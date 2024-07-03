@@ -50,7 +50,9 @@ Store uploaded files to your Medusa backend on Google Cloud Storage.
             client_email: process.env.CLIENT_EMAIL,
             private_key: process.env.PRIVATE_KEY
           },
-          bucketName: process.env.BUCKET_NAME
+          privateBucketName: process.env.GCP_STORAGE_PRIVATE_BUCKET_NAME,
+          publicBucketName: process.env.GCP_STORAGE_PUBLIC_BUCKET_NAME,
+          basePublicUrl: process.env.GCP_STORAGE_BASE_PUBLIC_URL,
       },
     },
   ]

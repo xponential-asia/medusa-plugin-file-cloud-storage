@@ -14,16 +14,26 @@ import stream, { Readable, PassThrough } from 'stream';
 import { UploadStreamDescriptorWithPathType, UploadedJsonType } from '../types/upload-binary';
 class CloudStorageService extends AbstractFileService implements IFileService {
   protected logger_: Logger;
-  protected storage_: Storage;
-  protected bucket_: Bucket;
-  protected bucketName_: string;
+  protected publicStorage_: Storage;
+  protected publicBucket_: Bucket;
+  protected publicBucketName_: string;
+  protected basePublicUrl_: string = "";
+  protected privateStorage_: Storage;
+  protected privateBucketName_: string;
+  protected privateBucket_: Bucket;
 
   constructor({ logger }, options) {
     super({}, options);
     this.logger_ = logger;
     //setup storage client
     if (options.credentials) {
-      this.storage_ = new Storage({
+      this.publicStorage_ = new Storage({
+        credentials: {
+          client_email: options.credentials.client_email,
+          private_key: options.credentials.private_key
+        }
+      });
+      this.privateStorage_ = new Storage({
         credentials: {
           client_email: options.credentials.client_email,
           private_key: options.credentials.private_key
@@ -31,11 +41,36 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       });
     } else {
       //Use Application Default credentials
-      this.storage_ = new Storage();
+      this.publicStorage_ = new Storage();
+      this.privateStorage_ = new Storage();
     }
-   
-    this.bucketName_ = options.bucketName;
-    this.bucket_ = this.storage_.bucket(this.bucketName_);
+    //Setup public bucket
+    this.publicBucketName_ = options.publicBucketName;
+    this.publicBucket_ = this.publicStorage_.bucket(this.publicBucketName_);
+
+    //Setup private bucket
+    this.privateBucketName_ = options.privateBucketName;
+    this.privateBucket_ = this.privateStorage_.bucket(this.privateBucketName_);
+
+    //base public url for get file in internet (e.g. cdn url)
+    this.basePublicUrl_ = options.basePublicUrl || "";
+  }
+
+  /**
+   * This method is used to transform the Google Cloud URL to a CDN URL. (Only for public bucket)
+   * @param googleCloudURL
+   * @returns
+   */
+  transformGoogleCloudURLtoCDN(googleCloudURL: string): string {
+    // Define the base URLs
+    const googleCloudBaseURL = `https://storage.googleapis.com/${this.publicBucketName_}/`;
+
+    // Extract the file identifier from the Google Cloud URL
+    const fileIdentifier = googleCloudURL.replace(googleCloudBaseURL, '');
+
+    // Construct the CDN URL
+    const cdnURL = `${this.basePublicUrl_}${fileIdentifier}`;
+    return cdnURL;
   }
 
   /**
@@ -47,8 +82,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       //key for use identifier when client get this
       const key = uuidv4();
+      //TODO: Discuss with team about the file path when duplicate file name
       const destination = `${key}/${fileData.originalname}`;
-      const result = await this.bucket_.upload(fileData.path, {
+      const result = await this.publicBucket_.upload(fileData.path, {
         destination,
         metadata: {
           predefinedAcl: 'publicRead'
@@ -58,8 +94,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       //get content of file
       const [file] = result;
       const publicUrl = await file.publicUrl();
+      const cdnURL = this.transformGoogleCloudURLtoCDN(publicUrl);
       return {
-        url: publicUrl,
+        url: cdnURL,
         key: destination
       };
     } catch (error) {
@@ -75,7 +112,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       // //key for use identifier when client get this
       const key = uuidv4();
       const destination = `${key}/${fileData.originalname}`;
-      const result = await this.bucket_.upload(fileData.path, {
+      const result = await this.privateBucket_.upload(fileData.path, {
         destination,
         private: true
       });
@@ -104,7 +141,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async delete(fileData: DeleteFileType): Promise<void> {
     try {
       //search file in bucket
-      const file = this.bucket_.file(fileData.fileKey);
+      const isPrivate = fileData?.isPrivate;
+      const file = isPrivate ? this.privateBucket_.file(fileData.fileKey) : this.publicBucket_.file(fileData.fileKey);
       const [isExist] = await file.exists();
       if (isExist) {
         //delete
@@ -131,7 +169,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const pass = new stream.PassThrough();
       const isPrivate = fileData?.isPrivate;
       let url = '';
-      const file = this.bucket_.file(parsedFile);
+      const file = isPrivate ? this.privateBucket_.file(parsedFile) : this.publicBucket_.file(parsedFile);
       const options = {
         metadata: {
           predefinedAcl: isPrivate ? 'private' : 'publicRead'
@@ -148,6 +186,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         url = file.cloudStorageURI.href;
       } else {
         url = await file.publicUrl();
+        url = this.transformGoogleCloudURLtoCDN(url);
       }
 
       const promise = new Promise((res, rej) => {
@@ -170,7 +209,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
 
   async getDownloadStream(fileData: GetUploadedFileType): Promise<NodeJS.ReadableStream> {
     try {
-      const file = this.bucket_.file(fileData.fileKey);
+      const isPrivate = fileData?.isPrivate;
+      const file = isPrivate ? this.privateBucket_.file(fileData.fileKey) : this.publicBucket_.file(fileData.fileKey);
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
@@ -188,7 +228,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async getPresignedDownloadUrl(fileData: GetUploadedFileType): Promise<string> {
     try {
       const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
-      const file = this.bucket_.file(fileData.fileKey);
+      const file = this.privateBucket_.file(fileData.fileKey);
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
@@ -219,8 +259,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     //force file name to be the same as the original name
     const fileName = fileData.name.replace(/\.[^/.]+$/, '');
     const destination = `${fileData.path}/${fileName}${extension}`;
-    const file = this.bucket_.file(destination);
     const isPrivate = fileData?.isPrivate;
+    const file = isPrivate ? this.privateBucket_.file(destination) : this.publicBucket_.file(destination);
     const options = {
       metadata: {
         predefinedAcl: isPrivate ? 'private' : 'publicRead'
@@ -243,6 +283,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       url = file.cloudStorageURI.href;
     } else {
       url = await file.publicUrl();
+      url = this.transformGoogleCloudURLtoCDN(url);
     }
     return {
       url,
@@ -267,8 +308,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     }
     const destination = `${fileDetail.path}/${fileName}`;
     //init file into the bucket *fileData.name include sub-bucket
-    const file = this.bucket_.file(destination);
     const isPrivate = fileDetail?.isPrivate;
+    const file = isPrivate ? this.privateBucket_.file(destination) : this.publicBucket_.file(destination);
     const options = {
       metadata: {
         predefinedAcl: isPrivate ? 'private' : 'publicRead'
@@ -291,6 +332,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       url = file.cloudStorageURI.href;
     } else {
       url = await file.publicUrl();
+      url = this.transformGoogleCloudURLtoCDN(url);
     }
     return {
       url,

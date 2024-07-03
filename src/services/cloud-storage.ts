@@ -12,9 +12,9 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import stream, { Readable, PassThrough } from 'stream';
 import { UploadStreamDescriptorWithPathType, UploadedJsonType } from '../types/upload-binary';
+import path from 'path';
 class CloudStorageService extends AbstractFileService implements IFileService {
   protected logger_: Logger;
-  protected publicStorage_: Storage;
   protected publicBucket_: Bucket;
   protected publicBucketName_: string;
   protected basePublicUrl_: string = "";
@@ -27,12 +27,6 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     this.logger_ = logger;
     //setup storage client
     if (options.credentials) {
-      this.publicStorage_ = new Storage({
-        credentials: {
-          client_email: options.credentials.client_email,
-          private_key: options.credentials.private_key
-        }
-      });
       this.privateStorage_ = new Storage({
         credentials: {
           client_email: options.credentials.client_email,
@@ -41,16 +35,13 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       });
     } else {
       //Use Application Default credentials
-      this.publicStorage_ = new Storage();
       this.privateStorage_ = new Storage();
     }
-    //Setup public bucket
+    //Setup public bucket name
     this.publicBucketName_ = options.publicBucketName;
-    this.publicBucket_ = this.publicStorage_.bucket(this.publicBucketName_);
 
-    //Setup private bucket
+    //Setup private bucket name
     this.privateBucketName_ = options.privateBucketName;
-    this.privateBucket_ = this.privateStorage_.bucket(this.privateBucketName_);
 
     //base public url for get file in internet (e.g. cdn url)
     this.basePublicUrl_ = options.basePublicUrl || "";
@@ -82,14 +73,12 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       //key for use identifier when client get this
       const key = uuidv4();
+      // Extracting the file name without the extension
+      const fileNameWithoutExtension = path.parse(fileData.originalname).name;
       //TODO: Discuss with team about the file path when duplicate file name
-      const destination = `${key}/${fileData.originalname}`;
-      const result = await this.publicBucket_.upload(fileData.path, {
+      const destination = `${key}/${fileNameWithoutExtension}/${fileData.originalname}`;
+      const result = await this.privateStorage_.bucket(this.publicBucketName_).upload(fileData.path, {
         destination,
-        metadata: {
-          predefinedAcl: 'publicRead'
-        },
-        public: true
       });
       //get content of file
       const [file] = result;
@@ -109,9 +98,11 @@ class CloudStorageService extends AbstractFileService implements IFileService {
 
   async uploadProtected(fileData: Express.Multer.File): Promise<FileServiceUploadResult> {
     try {
-      // //key for use identifier when client get this
+      //key for use identifier when client get this
       const key = uuidv4();
-      const destination = `${key}/${fileData.originalname}`;
+      // Extracting the file name without the extension
+      const fileNameWithoutExtension = path.parse(fileData.originalname).name;
+      const destination = `${key}/${fileNameWithoutExtension}/${fileData.originalname}`;
       const result = await this.privateBucket_.upload(fileData.path, {
         destination,
         private: true
@@ -141,8 +132,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async delete(fileData: DeleteFileType): Promise<void> {
     try {
       //search file in bucket
-      const isPrivate = fileData?.isPrivate;
-      const file = isPrivate ? this.privateBucket_.file(fileData.fileKey) : this.publicBucket_.file(fileData.fileKey);
+      const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
+      const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(fileData.fileKey);
       const [isExist] = await file.exists();
       if (isExist) {
         //delete
@@ -164,22 +155,20 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     fileData: UploadStreamDescriptorType
   ): Promise<FileServiceGetUploadStreamResult> {
     try {
+      //key for use identifier when client get this
+      const key = uuidv4();
       //init file into the bucket *fileData.name include subbucket
       const parsedFile = `${fileData.name}${fileData.ext ? `.${fileData.ext}` : ''}`;
+      // Extracting the file name without the extension
+      const fileNameWithoutExtension = parsedFile.replace(/\.[^/.]+$/, '');
+      const destination = `${key}/${fileNameWithoutExtension}/${parsedFile}`;
       const pass = new stream.PassThrough();
-      const isPrivate = fileData?.isPrivate;
+      const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
       let url = '';
-      const file = isPrivate ? this.privateBucket_.file(parsedFile) : this.publicBucket_.file(parsedFile);
-      const options = {
-        metadata: {
-          predefinedAcl: isPrivate ? 'private' : 'publicRead'
-        },
-        private: isPrivate,
-        public: !isPrivate
-      };
+      const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(destination);
 
       //Upload file to bucket
-      const pipe = fs.createReadStream(parsedFile).pipe(file.createWriteStream(options));
+      const pipe = fs.createReadStream(destination).pipe(file.createWriteStream());
 
       //Get url of file
       if (isPrivate) {
@@ -197,7 +186,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         writeStream: pass,
         promise,
         url,
-        fileKey: parsedFile
+        fileKey: destination
       };
     } catch (error) {
       throw new MedusaError(
@@ -209,8 +198,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
 
   async getDownloadStream(fileData: GetUploadedFileType): Promise<NodeJS.ReadableStream> {
     try {
-      const isPrivate = fileData?.isPrivate;
-      const file = isPrivate ? this.privateBucket_.file(fileData.fileKey) : this.publicBucket_.file(fileData.fileKey);
+      const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
+      const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(fileData.fileKey);
+
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
@@ -228,7 +218,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async getPresignedDownloadUrl(fileData: GetUploadedFileType): Promise<string> {
     try {
       const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
-      const file = this.privateBucket_.file(fileData.fileKey);
+      const file = this.privateStorage_.bucket(this.privateBucketName_).file(fileData.fileKey);
+
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
@@ -251,6 +242,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   }
 
   async uploadStreamJson(fileData: UploadedJsonType): Promise<FileServiceUploadResult> {
+    //key for use identifier when client get this
+    const key = uuidv4();
     const jsonString = JSON.stringify(fileData.data);
     const buffer = Buffer.from(jsonString);
     const stream = Readable.from(buffer);
@@ -258,18 +251,12 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     const extension = '.json';
     //force file name to be the same as the original name
     const fileName = fileData.name.replace(/\.[^/.]+$/, '');
-    const destination = `${fileData.path}/${fileName}${extension}`;
-    const isPrivate = fileData?.isPrivate;
-    const file = isPrivate ? this.privateBucket_.file(destination) : this.publicBucket_.file(destination);
-    const options = {
-      metadata: {
-        predefinedAcl: isPrivate ? 'private' : 'publicRead'
-      },
-      private: isPrivate,
-      public: !isPrivate
-    };
+    const destination = `${key}/${fileName}/${fileName}${extension}`;
+    const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
+    const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(destination);
+
     //make file streaming
-    const pipe = stream.pipe(file.createWriteStream(options));
+    const pipe = stream.pipe(file.createWriteStream());
     const pass = new PassThrough();
     stream.pipe(pass);
     const promise = new Promise((res, rej) => {
@@ -295,9 +282,12 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     fileDetail: UploadStreamDescriptorWithPathType,
     arrayBuffer: WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>
   ): Promise<FileServiceUploadResult> {
+    //key for use identifier when client get this
+    const key = uuidv4();
     const buffer = Buffer.from(arrayBuffer);
     const stream = Readable.from(buffer);
     let fileName = fileDetail.name.replace(/\.[^/.]+$/, '');
+    const fileNameWithoutExtension = fileName;
     fileName = fileDetail.ext ? `${fileName}.${fileDetail.ext}` : fileName;
     //check file name don't have extension
     if (!fileDetail.ext && fileName.indexOf('.') === -1) {
@@ -306,19 +296,14 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         'File name must have extension.'
       );
     }
-    const destination = `${fileDetail.path}/${fileName}`;
+    // Extracting the file name without the extension
+    const destination = `${key}/${fileNameWithoutExtension}/${fileName}`;
     //init file into the bucket *fileData.name include sub-bucket
-    const isPrivate = fileDetail?.isPrivate;
-    const file = isPrivate ? this.privateBucket_.file(destination) : this.publicBucket_.file(destination);
-    const options = {
-      metadata: {
-        predefinedAcl: isPrivate ? 'private' : 'publicRead'
-      },
-      private: isPrivate,
-      public: !isPrivate
-    };
+    const isPrivate = fileDetail?.isPrivate === undefined ? true : fileDetail.isPrivate;
+    const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(destination);
+
     //make file streaming
-    const pipe = stream.pipe(file.createWriteStream(options));
+    const pipe = stream.pipe(file.createWriteStream());
     const pass = new PassThrough();
     stream.pipe(pass);
     const promise = new Promise((res, rej) => {

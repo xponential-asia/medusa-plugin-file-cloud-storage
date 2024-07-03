@@ -17,10 +17,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   protected logger_: Logger;
   protected publicBucket_: Bucket;
   protected publicBucketName_: string;
-  protected basePublicUrl_: string = "";
+  protected basePublicUrl_: string = '';
   protected privateStorage_: Storage;
   protected privateBucketName_: string;
-  protected privateBucket_: Bucket;
 
   constructor({ logger }, options) {
     super({}, options);
@@ -44,7 +43,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     this.privateBucketName_ = options.privateBucketName;
 
     //base public url for get file in internet (e.g. cdn url)
-    this.basePublicUrl_ = options.basePublicUrl || "";
+    this.basePublicUrl_ = options.basePublicUrl || '';
   }
 
   /**
@@ -75,11 +74,12 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const key = uuidv4();
       // Extracting the file name without the extension
       const fileNameWithoutExtension = path.parse(fileData.originalname).name;
-      //TODO: Discuss with team about the file path when duplicate file name
       const destination = `${key}/${fileNameWithoutExtension}/${fileData.originalname}`;
-      const result = await this.privateStorage_.bucket(this.publicBucketName_).upload(fileData.path, {
-        destination,
-      });
+      const result = await this.privateStorage_
+        .bucket(this.publicBucketName_)
+        .upload(fileData.path, {
+          destination
+        });
       //get content of file
       const [file] = result;
       const publicUrl = await file.publicUrl();
@@ -103,10 +103,12 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       // Extracting the file name without the extension
       const fileNameWithoutExtension = path.parse(fileData.originalname).name;
       const destination = `${key}/${fileNameWithoutExtension}/${fileData.originalname}`;
-      const result = await this.privateBucket_.upload(fileData.path, {
-        destination,
-        private: true
-      });
+      const result = await this.privateStorage_
+        .bucket(this.privateBucketName_)
+        .upload(fileData.path, {
+          destination,
+          private: true
+        });
       //config for generate url
       const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
       const options: GetSignedUrlConfig = {
@@ -133,7 +135,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       //search file in bucket
       const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
-      const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(fileData.fileKey);
+      const file = this.privateStorage_
+        .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+        .file(fileData.fileKey);
       const [isExist] = await file.exists();
       if (isExist) {
         //delete
@@ -165,7 +169,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       const pass = new stream.PassThrough();
       const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
       let url = '';
-      const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(destination);
+      const file = this.privateStorage_
+        .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+        .file(destination);
 
       //Upload file to bucket
       const pipe = fs.createReadStream(destination).pipe(file.createWriteStream());
@@ -199,7 +205,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async getDownloadStream(fileData: GetUploadedFileType): Promise<NodeJS.ReadableStream> {
     try {
       const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
-      const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(fileData.fileKey);
+      const file = this.privateStorage_
+        .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+        .file(fileData.fileKey);
 
       const [isExist] = await file.exists();
       if (!isExist) {
@@ -253,7 +261,9 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     const fileName = fileData.name.replace(/\.[^/.]+$/, '');
     const destination = `${key}/${fileName}/${fileName}${extension}`;
     const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
-    const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(destination);
+    const file = this.privateStorage_
+      .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+      .file(destination);
 
     //make file streaming
     const pipe = stream.pipe(file.createWriteStream());
@@ -291,16 +301,15 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     fileName = fileDetail.ext ? `${fileName}.${fileDetail.ext}` : fileName;
     //check file name don't have extension
     if (!fileDetail.ext && fileName.indexOf('.') === -1) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        'File name must have extension.'
-      );
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, 'File name must have extension.');
     }
     // Extracting the file name without the extension
     const destination = `${key}/${fileNameWithoutExtension}/${fileName}`;
     //init file into the bucket *fileData.name include sub-bucket
     const isPrivate = fileDetail?.isPrivate === undefined ? true : fileDetail.isPrivate;
-    const file = this.privateStorage_.bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_).file(destination);
+    const file = this.privateStorage_
+      .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+      .file(destination);
 
     //make file streaming
     const pipe = stream.pipe(file.createWriteStream());

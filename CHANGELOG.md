@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.4.0...v1.5.0) (2024-07-04)
+
+
+### Bug Fixes
+
+* edit storage object use private for manage file ([a1dbf3f](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/a1dbf3f8fe2e40c90af4e8f361554fe251e5157f))
+
+
+### Features
+
+* separate public and private bucket and apply with cdn path ([47fc209](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/47fc209c39fad16ce7b892039d6c19b65bbcd270))
+
 # [1.4.0](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.3.0...v1.4.0) (2024-04-05)
 
 

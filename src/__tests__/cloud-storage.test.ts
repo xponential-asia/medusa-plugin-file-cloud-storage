@@ -9,8 +9,10 @@ jest.mock('uuid');
 // Mock the entire fs module
 jest.mock('fs');
 
+const publicBucketName = 'mock-public-bucket';
+const privateBucketName = 'mock-private-bucket';
+const basePublicUrl = 'https://cdn.com/asset/';
 describe('Cloud Storage Application Default credentials', () => {
-  const rootBucketName = 'mock-bucket';
   const credentials = null;
   let cloudStorageServiceDefaultApplicationCredentials;
   beforeEach(() => {
@@ -23,7 +25,7 @@ describe('Cloud Storage Application Default credentials', () => {
     // Create an instance of CloudStorageService with mock options
     cloudStorageServiceDefaultApplicationCredentials = new CloudStorageService(
       { logger },
-      { credentials, bucketName: rootBucketName }
+      { credentials, publicBucketName, privateBucketName, basePublicUrl }
     );
   });
   it('should be able to upload file to cloud storage with publicRead', async () => {
@@ -37,14 +39,25 @@ describe('Cloud Storage Application Default credentials', () => {
     uuidv4.mockReturnValue('uuid-value');
 
     // Mock the necessary parts of the @google-cloud/storage library
-    cloudStorageServiceDefaultApplicationCredentials.bucket_.upload = jest.fn().mockResolvedValue([
-      {
-        publicUrl: jest.fn().mockResolvedValue('https://test.com/mock-bucket/uuid/test-file-1.txt'),
-        cloudStorageURI: {
-          href: `gs://${rootBucketName}/uuid/${fileData.originalname}`
-        }
-      }
-    ]);
+    cloudStorageServiceDefaultApplicationCredentials.privateStorage_.bucket = jest
+      .fn()
+      .mockReturnValue({
+        upload: jest.fn().mockResolvedValue([
+          {
+            publicUrl: jest
+              .fn()
+              .mockResolvedValue('https://test.com/mock-bucket/uuid/test-file-1.txt'),
+            cloudStorageURI: {
+              href: `gs://${privateBucketName}/uuid/${fileData.originalname}`
+            }
+          }
+        ])
+      });
+
+    //Mock resolve public CDN url
+    cloudStorageServiceDefaultApplicationCredentials.transformGoogleCloudURLtoCDN = jest
+      .fn()
+      .mockReturnValue('https://cdn.com/asset/uuid/test-file-1.txt');
 
     //Call upload function
     const result = await cloudStorageServiceDefaultApplicationCredentials.upload(fileData);
@@ -53,19 +66,14 @@ describe('Cloud Storage Application Default credentials', () => {
     expect(result).toBeDefined();
     expect(result.url).toBeDefined();
     expect(result.key).toBeDefined();
-    expect(cloudStorageServiceDefaultApplicationCredentials.bucket_.upload).toHaveBeenCalledWith(
-      'src/__tests__/test-files/test-file-1.txt',
-      {
-        destination: expect.stringContaining('test-file-1.txt'),
-        metadata: {
-          predefinedAcl: 'publicRead'
-        },
-        public: true
-      }
-    );
+    expect(
+      cloudStorageServiceDefaultApplicationCredentials.privateStorage_.bucket().upload
+    ).toHaveBeenCalledWith('src/__tests__/test-files/test-file-1.txt', {
+      destination: 'uuid-value/test-file-1/test-file-1.txt'
+    });
     expect(result).toMatchObject({
-      url: 'https://test.com/mock-bucket/uuid/test-file-1.txt',
-      key: `uuid-value/${fileData.originalname}`
+      url: `${basePublicUrl}uuid/test-file-1.txt`,
+      key: `uuid-value/test-file-1/${fileData.originalname}`
     });
   });
 });
@@ -88,7 +96,7 @@ describe('Cloud Storage', () => {
     // Create an instance of CloudStorageService with mock options
     cloudStorageService = new CloudStorageService(
       { logger },
-      { credentials, bucketName: rootBucketName }
+      { credentials, publicBucketName, privateBucketName, basePublicUrl }
     );
   });
 
@@ -103,14 +111,23 @@ describe('Cloud Storage', () => {
     uuidv4.mockReturnValue('uuid-value');
 
     // Mock the necessary parts of the @google-cloud/storage library
-    cloudStorageService.bucket_.upload = jest.fn().mockResolvedValue([
-      {
-        publicUrl: jest.fn().mockResolvedValue('https://test.com/mock-bucket/uuid/test-file-1.txt'),
-        cloudStorageURI: {
-          href: `gs://${rootBucketName}/uuid/${fileData.originalname}`
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      upload: jest.fn().mockResolvedValueOnce([
+        {
+          publicUrl: jest
+            .fn()
+            .mockResolvedValueOnce('https://test.com/mock-bucket/uuid/test-file-1.txt'),
+          cloudStorageURI: {
+            href: `gs://${rootBucketName}/uuid/${fileData.originalname}`
+          }
         }
-      }
-    ]);
+      ])
+    });
+
+    //Mock resolve public CDN url
+    cloudStorageService.transformGoogleCloudURLtoCDN = jest
+      .fn()
+      .mockReturnValue('https://cdn.com/asset/uuid/test-file-1.txt');
 
     //Call upload function
     const result = await cloudStorageService.upload(fileData);
@@ -119,26 +136,24 @@ describe('Cloud Storage', () => {
     expect(result).toBeDefined();
     expect(result.url).toBeDefined();
     expect(result.key).toBeDefined();
-    expect(cloudStorageService.bucket_.upload).toHaveBeenCalledWith(
+    expect(cloudStorageService.privateStorage_.bucket().upload).toHaveBeenCalledWith(
       'src/__tests__/test-files/test-file-1.txt',
       {
-        destination: expect.stringContaining('test-file-1.txt'),
-        metadata: {
-          predefinedAcl: 'publicRead'
-        },
-        public: true
+        destination: 'uuid-value/test-file-1/test-file-1.txt'
       }
     );
     expect(result).toMatchObject({
-      url: 'https://test.com/mock-bucket/uuid/test-file-1.txt',
-      key: `uuid-value/${fileData.originalname}`
+      url: `${basePublicUrl}uuid/test-file-1.txt`,
+      key: `uuid-value/test-file-1/${fileData.originalname}`
     });
   });
 
   test('should throw an error during upload', async () => {
     // Mock the necessary parts of the @google-cloud/storage library
-    cloudStorageService.bucket_.upload = jest.fn().mockImplementation(() => {
-      throw new Error('Simulated upload error');
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      upload: jest.fn().mockImplementationOnce(() => {
+        throw new Error('Simulated upload error');
+      })
     });
 
     // Mock Express.Multer.File object
@@ -162,13 +177,15 @@ describe('Cloud Storage', () => {
     // Mock the implementation of uuidv4
     uuidv4.mockReturnValue('uuid-value');
 
-    cloudStorageService.bucket_.upload = jest.fn().mockResolvedValue([
-      {
-        getSignedUrl: jest
-          .fn()
-          .mockResolvedValue(['https://test.com/mock-bucket/uuid/mock-file.jpg'])
-      }
-    ]);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      upload: jest.fn().mockResolvedValue([
+        {
+          getSignedUrl: jest
+            .fn()
+            .mockResolvedValue(['https://test.com/mock-bucket/uuid/mock-file/mock-file.jpg'])
+        }
+      ])
+    });
 
     //Call upload function
     const result = await cloudStorageService.uploadProtected(mockFileData);
@@ -177,20 +194,23 @@ describe('Cloud Storage', () => {
     expect(result).toBeDefined();
     expect(result.url).toBeDefined();
     expect(result.key).toBeDefined();
-    expect(cloudStorageService.bucket_.upload).toHaveBeenCalledWith('src/__tests__/mock-file.jpg', {
-      destination: expect.stringContaining('mock-file.jpg'),
+    const uploadMock = cloudStorageService.privateStorage_.bucket().upload;
+    expect(uploadMock).toHaveBeenCalledWith('src/__tests__/mock-file.jpg', {
+      destination: 'uuid-value/mock-file/mock-file.jpg',
       private: true
     });
     expect(result).toEqual({
-      url: 'https://test.com/mock-bucket/uuid/mock-file.jpg',
-      key: `uuid-value/${mockFileData.originalname}`
+      url: 'https://test.com/mock-bucket/uuid/mock-file/mock-file.jpg',
+      key: `uuid-value/mock-file/${mockFileData.originalname}`
     });
   });
 
   test('should throw an error during upload protected', async () => {
     // Mock the necessary parts of the @google-cloud/storage library
-    cloudStorageService.bucket_.upload = jest.fn().mockImplementation(() => {
-      throw new Error('Simulated upload protected error');
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      upload: jest.fn().mockImplementationOnce(() => {
+        throw new Error('Simulated upload protected error');
+      })
     });
 
     // Mock Express.Multer.File object
@@ -205,11 +225,12 @@ describe('Cloud Storage', () => {
     );
   });
 
-  it('should be able to delete file from cloud storage', async () => {
+  it('should be able to delete file from cloud storage (public)', async () => {
     const originalname = 'mock-file.jpg';
     const mockFileData = {
       fileKey: `uuid/${originalname}`,
-      originalname
+      originalname,
+      isPrivate: false
     };
 
     // Mock the bucket and file objects
@@ -221,11 +242,47 @@ describe('Cloud Storage', () => {
       })
     };
 
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValueOnce(mockObjFile)
+    });
     await cloudStorageService.delete(mockFileData);
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(`uuid/${originalname}`);
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(publicBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      `uuid/${originalname}`
+    );
+    expect(mockObjFile.exists).toHaveBeenCalled();
+    expect(mockObjFile.delete).toHaveBeenCalled();
+  });
+
+  it('should be able to delete file from cloud storage (private)', async () => {
+    const originalname = 'mock-file.jpg';
+    const mockFileData = {
+      fileKey: `uuid/${originalname}`,
+      originalname,
+      isPrivate: true
+    };
+
+    // Mock the bucket and file objects
+    const mockObjFile = {
+      exists: jest.fn().mockResolvedValue([true]),
+      delete: jest.fn().mockImplementation(async () => {
+        // mock delete function
+        return;
+      })
+    };
+
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValueOnce(mockObjFile)
+    });
+    await cloudStorageService.delete(mockFileData);
+
+    // Assertions
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      `uuid/${originalname}`
+    );
     expect(mockObjFile.exists).toHaveBeenCalled();
     expect(mockObjFile.delete).toHaveBeenCalled();
   });
@@ -236,7 +293,9 @@ describe('Cloud Storage', () => {
       exists: jest.fn().mockResolvedValue([false])
     };
 
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValueOnce(mockObjFile)
+    });
 
     // Call the delete method
     await expect(() =>
@@ -244,7 +303,10 @@ describe('Cloud Storage', () => {
     ).rejects.toThrow('Not found file.');
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('non-existent-file.txt');
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      'non-existent-file.txt'
+    );
     expect(mockObjFile.exists).toHaveBeenCalled();
     expect(mockObjFile.exists).toHaveBeenCalledWith();
   });
@@ -256,7 +318,9 @@ describe('Cloud Storage', () => {
       delete: jest.fn().mockRejectedValue(new Error('Delete failed'))
     };
 
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValueOnce(mockFile)
+    });
 
     // Call the delete method
     await expect(() =>
@@ -264,18 +328,25 @@ describe('Cloud Storage', () => {
     ).rejects.toThrow('Delete failed');
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('test-file-key.txt');
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      'test-file-key.txt'
+    );
     expect(mockFile.exists).toHaveBeenCalled();
     expect(mockFile.delete).toHaveBeenCalled();
   });
 
-  test('should create upload stream public descriptor', async () => {
+  test('should create upload stream public descriptor (public)', async () => {
     // Mock the storage and bucket objects
     const fileData = {
-      name: 'path/to/mock-file',
+      name: 'mock-file',
       ext: 'txt',
       isPrivate: false
     };
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     const mReadStream = {
       pipe: jest.fn().mockReturnThis(),
       on: jest.fn().mockImplementation((event, handler) => {
@@ -292,30 +363,40 @@ describe('Cloud Storage', () => {
       publicUrl: jest.fn().mockResolvedValue('mocked-public-url')
     };
     // Mock the bucket object directly on the CloudStorageService instance
-    cloudStorageService.bucket_ = {
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
       file: jest.fn().mockReturnValue(mockFile)
-    };
+    });
+
     const result = await cloudStorageService.getUploadStreamDescriptor(fileData);
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('path/to/mock-file.txt');
-    expect(cloudStorageService.bucket_.file().createWriteStream).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(publicBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      'uuid-value/mock-file/mock-file.txt'
+    );
+    expect(
+      cloudStorageService.privateStorage_.bucket().file().createWriteStream
+    ).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).toHaveBeenCalled();
 
     // Assuming you have more detailed assertions for the result
     expect(result).toHaveProperty('writeStream', expect.any(PassThrough));
     expect(result).toHaveProperty('promise', expect.any(Promise));
-    expect(result).toHaveProperty('url', 'mocked-public-url');
-    expect(result).toHaveProperty('fileKey', 'path/to/mock-file.txt');
+    expect(result).toHaveProperty('url', `${basePublicUrl}mocked-public-url`);
+    expect(result).toHaveProperty('fileKey', 'uuid-value/mock-file/mock-file.txt');
   });
 
-  test('should create upload stream private descriptor', async () => {
+  test('should create upload stream private descriptor (private)', async () => {
     // Mock the storage and bucket objects
     const fileData = {
-      name: 'path/to/mock-file',
+      name: 'mock-file',
       ext: 'txt',
       isPrivate: true
     };
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     const mReadStream = {
       pipe: jest.fn().mockReturnThis(),
       on: jest.fn().mockImplementation((event, handler) => {
@@ -332,30 +413,38 @@ describe('Cloud Storage', () => {
       publicUrl: jest.fn().mockResolvedValue('mocked-public-url')
     };
     // Mock the bucket object directly on the CloudStorageService instance
-    cloudStorageService.bucket_ = {
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
       file: jest.fn().mockReturnValue(mockFile)
-    };
+    });
     const result = await cloudStorageService.getUploadStreamDescriptor(fileData);
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('path/to/mock-file.txt');
-    expect(cloudStorageService.bucket_.file().createWriteStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      'uuid-value/mock-file/mock-file.txt'
+    );
+    expect(
+      cloudStorageService.privateStorage_.bucket().file().createWriteStream
+    ).toHaveBeenCalled();
 
     // Assuming you have more detailed assertions for the result
     expect(result).toHaveProperty('writeStream', expect.any(PassThrough));
     expect(result).toHaveProperty('promise', expect.any(Promise));
     expect(result).toHaveProperty('url', 'mocked-private-url');
-    expect(result).toHaveProperty('fileKey', 'path/to/mock-file.txt');
-    expect(cloudStorageService.bucket_.file().publicUrl).not.toHaveBeenCalled();
+    expect(result).toHaveProperty('fileKey', 'uuid-value/mock-file/mock-file.txt');
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).not.toHaveBeenCalled();
   });
 
   test('should create upload stream descriptor during write in gcp process error', async () => {
     // Mock the storage and bucket objects
     const fileData = {
-      name: 'path/to/mock-file',
+      name: 'mock-file',
       ext: 'txt',
       isPrivate: false
     };
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     const mReadStream = {
       pipe: jest.fn().mockReturnThis(),
       on: jest.fn().mockImplementation((event, handler) => {
@@ -379,26 +468,34 @@ describe('Cloud Storage', () => {
       publicUrl: jest.fn().mockRejectedValue(new Error('Upload file stream error when publicUrl'))
     };
     // Mock the bucket object directly on the CloudStorageService instance
-    cloudStorageService.bucket_ = {
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
       file: jest.fn().mockReturnValue(mockFile)
-    };
+    });
     await expect(() => cloudStorageService.getUploadStreamDescriptor(fileData)).rejects.toThrow(
       'Mocked createReadStream error'
     );
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('path/to/mock-file.txt');
-    expect(cloudStorageService.bucket_.file().createWriteStream).not.toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      'uuid-value/mock-file/mock-file.txt'
+    );
+    expect(
+      cloudStorageService.privateStorage_.bucket().file().createWriteStream
+    ).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).not.toHaveBeenCalled();
   });
 
-  test('should create upload stream descriptor during promise pipe in process error', async () => {
+  test('should create upload stream descriptor during promise pipe in process error (public)', async () => {
     // Mock the storage and bucket objects
     const fileData = {
-      name: 'path/to/mock-file',
+      name: 'mock-file',
       ext: 'txt',
       isPrivate: false
     };
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     const mReadStream = {
       pipe: jest.fn().mockReturnThis(),
       on: jest.fn().mockRejectedValue(new Error('Upload file stream error when createWriteStream'))
@@ -417,81 +514,102 @@ describe('Cloud Storage', () => {
       publicUrl: jest.fn().mockResolvedValue('mocked-public-url')
     };
     // Mock the bucket object directly on the CloudStorageService instance
-    cloudStorageService.bucket_ = {
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
       file: jest.fn().mockReturnValue(mockFile)
-    };
+    });
     await expect(() => cloudStorageService.getUploadStreamDescriptor(fileData)).rejects.toThrow(
       'Mocked createReadStream error'
     );
 
     // Assertions
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith('path/to/mock-file.txt');
-    expect(cloudStorageService.bucket_.file().publicUrl).not.toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().createWriteStream).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      'uuid-value/mock-file/mock-file.txt'
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).not.toHaveBeenCalled();
+    expect(
+      cloudStorageService.privateStorage_.bucket().file().createWriteStream
+    ).not.toHaveBeenCalled();
   });
 
-  it('should be able to get download stream', async () => {
+  it('should be able to get download stream (private)', async () => {
     // Mock the bucket and file objects
     const mockObjFile = {
       exists: jest.fn().mockResolvedValue([true]),
       createReadStream: jest.fn().mockReturnValue(new PassThrough())
     };
     const fileData = {
-      fileKey: 'existing-file.txt'
+      fileKey: 'existing-file.txt',
+      isPrivate: true
     };
 
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
     // Call the download stream method
     const result = await cloudStorageService.getDownloadStream(fileData);
     // Assertions
     expect(result).toBeDefined();
-
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
-    expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().createReadStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      fileData.fileKey
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().exists).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().createReadStream).toHaveBeenCalled();
     expect(result).toBeInstanceOf(Readable);
   });
 
-  it('should throw an error when the file does not exist', async () => {
+  it('should throw an error when the file does not exist (private)', async () => {
     // Mock the bucket and file objects
     const mockObjFile = {
       exists: jest.fn().mockResolvedValue([false]),
       createReadStream: jest.fn().mockReturnValue(new PassThrough())
     };
     const fileData = {
-      fileKey: 'non-existent-file.txt'
+      fileKey: 'non-existent-file.txt',
+      isPrivate: true
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
 
     // Assertions and Call API
     await expect(cloudStorageService.getDownloadStream(fileData)).rejects.toThrow(
       'Not found file.'
     );
-
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
-    expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().createReadStream).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      fileData.fileKey
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().exists).toHaveBeenCalled();
+    expect(
+      cloudStorageService.privateStorage_.bucket().file().createReadStream
+    ).not.toHaveBeenCalled();
   });
 
-  it('should throw an error when an error occurs during the process download stream', async () => {
+  it('should throw an error when an error occurs during the process download stream (public)', async () => {
     // Mock the bucket and file objects
     const mockObjFile = {
       exists: jest.fn().mockResolvedValue([true]),
       createReadStream: jest.fn().mockRejectedValue(new Error('Download stream file error'))
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
     const fileData = {
-      fileKey: 'error-file.txt'
+      fileKey: 'error-file.txt',
+      isPrivate: false
     };
 
     // Assertions and Call API
     await expect(cloudStorageService.getDownloadStream(fileData)).rejects.toThrow(
       'Download stream file error'
     );
-
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
-    expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().createReadStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(publicBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      fileData.fileKey
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().exists).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().createReadStream).toHaveBeenCalled();
   });
   it('should be able to get download presigned url', async () => {
     // Mock the bucket and file objects
@@ -501,10 +619,9 @@ describe('Cloud Storage', () => {
         .fn()
         .mockResolvedValue(['https://test.com/mock-bucket/uuid/existent-file.txt'])
     };
-    const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
-    const date = Date.now();
-
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
     const fileData = {
       fileKey: 'existent-file.txt'
     };
@@ -514,9 +631,12 @@ describe('Cloud Storage', () => {
 
     // Assertions
     expect(result).toBeDefined();
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
-    expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().getSignedUrl).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      fileData.fileKey
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().exists).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().getSignedUrl).toHaveBeenCalled();
     expect(result).toEqual('https://test.com/mock-bucket/uuid/existent-file.txt');
   });
 
@@ -528,7 +648,9 @@ describe('Cloud Storage', () => {
         .fn()
         .mockResolvedValue(['https://test.com/mock-bucket/uuid/existent-file.txt'])
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
     const fileData = {
       fileKey: 'non-existent-file.txt'
     };
@@ -537,10 +659,12 @@ describe('Cloud Storage', () => {
     await expect(cloudStorageService.getPresignedDownloadUrl(fileData)).rejects.toThrow(
       'Not found file.'
     );
-
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
-    expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().getSignedUrl).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      fileData.fileKey
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().exists).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().getSignedUrl).not.toHaveBeenCalled();
   });
 
   test('should throw an error when an error occurs during the process download presigned url', async () => {
@@ -551,11 +675,13 @@ describe('Cloud Storage', () => {
         .fn()
         .mockResolvedValue(['https://test.com/mock-bucket/uuid/existent-file.txt'])
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
     const fileData = {
       fileKey: 'error-file.txt'
     };
-    cloudStorageService.bucket_
+    cloudStorageService.privateStorage_.bucket()
       .file()
       .exists.mockRejectedValue(new Error('Download presigned url error'));
 
@@ -563,9 +689,12 @@ describe('Cloud Storage', () => {
       'Download presigned url error'
     );
 
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(fileData.fileKey);
-    expect(cloudStorageService.bucket_.file().exists).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().getSignedUrl).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(
+      fileData.fileKey
+    );
+    expect(cloudStorageService.privateStorage_.bucket().file().exists).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().getSignedUrl).not.toHaveBeenCalled();
   });
 
   test('should success upload stream json with data (public)', async () => {
@@ -574,15 +703,20 @@ describe('Cloud Storage', () => {
         test: 'test-data-json'
       },
       path: 'import-product',
-      name: 'test02.json'
+      name: 'test02.json',
+      isPrivate: false
     } as UploadedJsonType;
     const mockExpectedValue = {
-      url: 'https://test.com/mock-bucket/uuid/test02.json',
-      key: 'import-product/test02.json'
+      url: `${basePublicUrl}/test02/test02.json`,
+      key: 'uuid-value/test02/test02.json'
     };
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     const extension = '.json';
     const fileName = dataMock.name.replace(/\.[^/.]+$/, '');
-    const destinationMock = `${dataMock.path}/${fileName}${extension}`;
+    const destinationMock = `uuid-value/${fileName}/${fileName}${extension}`;
     // Mock the bucket and file objects
     const mockObjFile = {
       createWriteStream: jest.fn().mockReturnValue(new PassThrough()),
@@ -591,15 +725,23 @@ describe('Cloud Storage', () => {
         href: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
       }
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
+
+    //Mock resolve public CDN url
+    cloudStorageService.transformGoogleCloudURLtoCDN = jest
+      .fn()
+      .mockReturnValue(`${basePublicUrl}/test02/test02.json`);
 
     const result = await cloudStorageService.uploadStreamJson(dataMock);
 
     //Assertions
     expect(result).toEqual(mockExpectedValue);
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(destinationMock);
-    expect(cloudStorageService.bucket_.file().createWriteStream).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(publicBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(destinationMock);
+    expect(cloudStorageService.privateStorage_.bucket().file().createWriteStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).toHaveBeenCalled();
   });
 
   test('should success upload stream json with data (private)', async () => {
@@ -615,9 +757,10 @@ describe('Cloud Storage', () => {
       url: 'https://test.com/mock-bucket/uuid/test02.json',
       key: 'import-product/test02.json'
     };
-    const extension = '.json';
-    const fileName = dataMock.name.replace(/\.[^/.]+$/, '');
-    const destinationMock = `${dataMock.path}/${fileName}${extension}`;
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     // Mock the bucket and file objects
     const mockObjFile = {
       createWriteStream: jest.fn().mockReturnValue(new PassThrough()),
@@ -626,33 +769,38 @@ describe('Cloud Storage', () => {
         href: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
       }
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
 
     const result = await cloudStorageService.uploadStreamJson(dataMock);
 
     //Assertions
     expect(result).toEqual({
-      ...mockExpectedValue,
-      url: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
+      url: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`,
+      key: 'uuid-value/test02/test02.json'
     });
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(destinationMock);
-    expect(cloudStorageService.bucket_.file().createWriteStream).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith('uuid-value/test02/test02.json');
+    expect(cloudStorageService.privateStorage_.bucket().file().createWriteStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).not.toHaveBeenCalled();
   });
 
   test('should success upload with stream data (public)', async () => {
     const dataMock = {
       path: 'import-product',
       name: 'test.json',
-      ext: 'json'
+      ext: 'json',
+      isPrivate: false
     } as UploadStreamDescriptorWithPathType;
     const mockExpectedValue = {
-      url: 'https://test.com/mock-bucket/uuid/test.json',
-      key: 'import-product/test.json'
+      url: 'https://cdn.com/asset//test/test.json',
+      key: 'uuid-value/test/test.json'
     };
-    const extension = '.json';
-    const fileName = dataMock.name.replace(/\.[^/.]+$/, '');
-    const destinationMock = `${dataMock.path}/${fileName}${extension}`;
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     // Mock the bucket and file objects
     const mockObjFile = {
       createWriteStream: jest.fn().mockReturnValue(new PassThrough()),
@@ -661,15 +809,23 @@ describe('Cloud Storage', () => {
         href: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
       }
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
+
+    //Mock resolve public CDN url
+    cloudStorageService.transformGoogleCloudURLtoCDN = jest
+      .fn()
+      .mockReturnValue(`${basePublicUrl}/test/test.json`);
 
     const result = await cloudStorageService.uploadStream(dataMock, Buffer.from('test'));
 
     //Assertions
     expect(result).toEqual(mockExpectedValue);
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(destinationMock);
-    expect(cloudStorageService.bucket_.file().createWriteStream).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(publicBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(mockExpectedValue.key);
+    expect(cloudStorageService.privateStorage_.bucket().file().createWriteStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).toHaveBeenCalled();
   });
 
   test('should success upload with stream data (private)', async () => {
@@ -681,11 +837,12 @@ describe('Cloud Storage', () => {
     } as UploadStreamDescriptorWithPathType;
     const mockExpectedValue = {
       url: 'https://test.com/mock-bucket/uuid/test.json',
-      key: 'import-product/test.json'
+      key: 'uuid-value/test/test.json'
     };
-    const extension = '.json';
-    const fileName = dataMock.name.replace(/\.[^/.]+$/, '');
-    const destinationMock = `${dataMock.path}/${fileName}${extension}`;
+
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     // Mock the bucket and file objects
     const mockObjFile = {
       createWriteStream: jest.fn().mockReturnValue(new PassThrough()),
@@ -694,7 +851,9 @@ describe('Cloud Storage', () => {
         href: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
       }
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
 
     const result = await cloudStorageService.uploadStream(dataMock, Buffer.from('test'));
 
@@ -703,23 +862,26 @@ describe('Cloud Storage', () => {
       ...mockExpectedValue,
       url: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
     });
-    expect(cloudStorageService.bucket_.file).toHaveBeenCalledWith(destinationMock);
-    expect(cloudStorageService.bucket_.file().createWriteStream).toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket).toHaveBeenCalledWith(privateBucketName);
+    expect(cloudStorageService.privateStorage_.bucket().file).toHaveBeenCalledWith(mockExpectedValue.key);
+    expect(cloudStorageService.privateStorage_.bucket().file().createWriteStream).toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).not.toHaveBeenCalled();
   });
 
   test('should throw an error when upload with stream data empty extension (public)', async () => {
     const dataMock = {
       path: 'import-product',
-      name: 'test'
+      name: 'test',
+      isPrivate: false
     } as UploadStreamDescriptorWithPathType;
     const mockExpectedValue = {
-      url: 'https://test.com/mock-bucket/uuid/test.json',
-      key: 'import-product/test.json'
+      url: 'https://cdn.com/asset//test/test.json',
+      key: 'uuid-value/test/test.json'
     };
-    const extension = '.json';
-    const fileName = dataMock.name.replace(/\.[^/.]+$/, '');
-    const destinationMock = `${dataMock.path}/${fileName}${extension}`;
+    
+    // Mock the implementation of uuidv4
+    uuidv4.mockReturnValue('uuid-value');
+
     // Mock the bucket and file objects
     const mockObjFile = {
       createWriteStream: jest.fn().mockReturnValue(new PassThrough()),
@@ -728,14 +890,16 @@ describe('Cloud Storage', () => {
         href: `gs://${rootBucketName}/${dataMock.path}/${dataMock.name}`
       }
     };
-    cloudStorageService.bucket_.file = jest.fn().mockReturnValue(mockObjFile);
+    cloudStorageService.privateStorage_.bucket = jest.fn().mockReturnValue({
+      file: jest.fn().mockReturnValue(mockObjFile)
+    });
 
     //Assertions
     await expect(cloudStorageService.uploadStream(dataMock, Buffer.from('test'))).rejects.toThrow(
       'File name must have extension.'
     );
-    expect(cloudStorageService.bucket_.file).not.toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().createWriteStream).not.toHaveBeenCalled();
-    expect(cloudStorageService.bucket_.file().publicUrl).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().createWriteStream).not.toHaveBeenCalled();
+    expect(cloudStorageService.privateStorage_.bucket().file().publicUrl).not.toHaveBeenCalled();
   });
 });

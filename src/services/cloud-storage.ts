@@ -12,18 +12,21 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import stream, { Readable, PassThrough } from 'stream';
 import { UploadStreamDescriptorWithPathType, UploadedJsonType } from '../types/upload-binary';
+import path from 'path';
 class CloudStorageService extends AbstractFileService implements IFileService {
   protected logger_: Logger;
-  protected storage_: Storage;
-  protected bucket_: Bucket;
-  protected bucketName_: string;
+  protected publicBucket_: Bucket;
+  protected publicBucketName_: string;
+  protected basePublicUrl_: string = '';
+  protected privateStorage_: Storage;
+  protected privateBucketName_: string;
 
   constructor({ logger }, options) {
     super({}, options);
     this.logger_ = logger;
     //setup storage client
     if (options.credentials) {
-      this.storage_ = new Storage({
+      this.privateStorage_ = new Storage({
         credentials: {
           client_email: options.credentials.client_email,
           private_key: options.credentials.private_key
@@ -31,11 +34,33 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       });
     } else {
       //Use Application Default credentials
-      this.storage_ = new Storage();
+      this.privateStorage_ = new Storage();
     }
-   
-    this.bucketName_ = options.bucketName;
-    this.bucket_ = this.storage_.bucket(this.bucketName_);
+    //Setup public bucket name
+    this.publicBucketName_ = options.publicBucketName;
+
+    //Setup private bucket name
+    this.privateBucketName_ = options.privateBucketName;
+
+    //base public url for get file in internet (e.g. cdn url)
+    this.basePublicUrl_ = options.basePublicUrl || '';
+  }
+
+  /**
+   * This method is used to transform the Google Cloud URL to a CDN URL. (Only for public bucket)
+   * @param googleCloudURL
+   * @returns
+   */
+  transformGoogleCloudURLtoCDN(googleCloudURL: string): string {
+    // Define the base URLs
+    const googleCloudBaseURL = `https://storage.googleapis.com/${this.publicBucketName_}/`;
+
+    // Extract the file identifier from the Google Cloud URL
+    const fileIdentifier = googleCloudURL.replace(googleCloudBaseURL, '');
+
+    // Construct the CDN URL
+    const cdnURL = `${this.basePublicUrl_}${fileIdentifier}`;
+    return cdnURL;
   }
 
   /**
@@ -47,19 +72,20 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     try {
       //key for use identifier when client get this
       const key = uuidv4();
-      const destination = `${key}/${fileData.originalname}`;
-      const result = await this.bucket_.upload(fileData.path, {
-        destination,
-        metadata: {
-          predefinedAcl: 'publicRead'
-        },
-        public: true
-      });
+      // Extracting the file name without the extension
+      const fileNameWithoutExtension = path.parse(fileData.originalname).name;
+      const destination = `${key}/${fileNameWithoutExtension}/${fileData.originalname}`;
+      const result = await this.privateStorage_
+        .bucket(this.publicBucketName_)
+        .upload(fileData.path, {
+          destination
+        });
       //get content of file
       const [file] = result;
       const publicUrl = await file.publicUrl();
+      const cdnURL = this.transformGoogleCloudURLtoCDN(publicUrl);
       return {
-        url: publicUrl,
+        url: cdnURL,
         key: destination
       };
     } catch (error) {
@@ -72,13 +98,17 @@ class CloudStorageService extends AbstractFileService implements IFileService {
 
   async uploadProtected(fileData: Express.Multer.File): Promise<FileServiceUploadResult> {
     try {
-      // //key for use identifier when client get this
+      //key for use identifier when client get this
       const key = uuidv4();
-      const destination = `${key}/${fileData.originalname}`;
-      const result = await this.bucket_.upload(fileData.path, {
-        destination,
-        private: true
-      });
+      // Extracting the file name without the extension
+      const fileNameWithoutExtension = path.parse(fileData.originalname).name;
+      const destination = `${key}/${fileNameWithoutExtension}/${fileData.originalname}`;
+      const result = await this.privateStorage_
+        .bucket(this.privateBucketName_)
+        .upload(fileData.path, {
+          destination,
+          private: true
+        });
       //config for generate url
       const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
       const options: GetSignedUrlConfig = {
@@ -104,7 +134,10 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async delete(fileData: DeleteFileType): Promise<void> {
     try {
       //search file in bucket
-      const file = this.bucket_.file(fileData.fileKey);
+      const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
+      const file = this.privateStorage_
+        .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+        .file(fileData.fileKey);
       const [isExist] = await file.exists();
       if (isExist) {
         //delete
@@ -126,28 +159,29 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     fileData: UploadStreamDescriptorType
   ): Promise<FileServiceGetUploadStreamResult> {
     try {
+      //key for use identifier when client get this
+      const key = uuidv4();
       //init file into the bucket *fileData.name include subbucket
       const parsedFile = `${fileData.name}${fileData.ext ? `.${fileData.ext}` : ''}`;
+      // Extracting the file name without the extension
+      const fileNameWithoutExtension = parsedFile.replace(/\.[^/.]+$/, '');
+      const destination = `${key}/${fileNameWithoutExtension}/${parsedFile}`;
       const pass = new stream.PassThrough();
-      const isPrivate = fileData?.isPrivate;
+      const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
       let url = '';
-      const file = this.bucket_.file(parsedFile);
-      const options = {
-        metadata: {
-          predefinedAcl: isPrivate ? 'private' : 'publicRead'
-        },
-        private: isPrivate,
-        public: !isPrivate
-      };
+      const file = this.privateStorage_
+        .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+        .file(destination);
 
       //Upload file to bucket
-      const pipe = fs.createReadStream(parsedFile).pipe(file.createWriteStream(options));
+      const pipe = fs.createReadStream(destination).pipe(file.createWriteStream());
 
       //Get url of file
       if (isPrivate) {
         url = file.cloudStorageURI.href;
       } else {
         url = await file.publicUrl();
+        url = this.transformGoogleCloudURLtoCDN(url);
       }
 
       const promise = new Promise((res, rej) => {
@@ -158,7 +192,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         writeStream: pass,
         promise,
         url,
-        fileKey: parsedFile
+        fileKey: destination
       };
     } catch (error) {
       throw new MedusaError(
@@ -170,7 +204,11 @@ class CloudStorageService extends AbstractFileService implements IFileService {
 
   async getDownloadStream(fileData: GetUploadedFileType): Promise<NodeJS.ReadableStream> {
     try {
-      const file = this.bucket_.file(fileData.fileKey);
+      const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
+      const file = this.privateStorage_
+        .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+        .file(fileData.fileKey);
+
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
@@ -188,7 +226,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   async getPresignedDownloadUrl(fileData: GetUploadedFileType): Promise<string> {
     try {
       const EXPIRATION_TIME = 15 * 60 * 1000; // 15 minutes
-      const file = this.bucket_.file(fileData.fileKey);
+      const file = this.privateStorage_.bucket(this.privateBucketName_).file(fileData.fileKey);
+
       const [isExist] = await file.exists();
       if (!isExist) {
         //Not found file
@@ -211,6 +250,8 @@ class CloudStorageService extends AbstractFileService implements IFileService {
   }
 
   async uploadStreamJson(fileData: UploadedJsonType): Promise<FileServiceUploadResult> {
+    //key for use identifier when client get this
+    const key = uuidv4();
     const jsonString = JSON.stringify(fileData.data);
     const buffer = Buffer.from(jsonString);
     const stream = Readable.from(buffer);
@@ -218,18 +259,14 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     const extension = '.json';
     //force file name to be the same as the original name
     const fileName = fileData.name.replace(/\.[^/.]+$/, '');
-    const destination = `${fileData.path}/${fileName}${extension}`;
-    const file = this.bucket_.file(destination);
-    const isPrivate = fileData?.isPrivate;
-    const options = {
-      metadata: {
-        predefinedAcl: isPrivate ? 'private' : 'publicRead'
-      },
-      private: isPrivate,
-      public: !isPrivate
-    };
+    const destination = `${key}/${fileName}/${fileName}${extension}`;
+    const isPrivate = fileData?.isPrivate === undefined ? true : fileData.isPrivate;
+    const file = this.privateStorage_
+      .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+      .file(destination);
+
     //make file streaming
-    const pipe = stream.pipe(file.createWriteStream(options));
+    const pipe = stream.pipe(file.createWriteStream());
     const pass = new PassThrough();
     stream.pipe(pass);
     const promise = new Promise((res, rej) => {
@@ -243,6 +280,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       url = file.cloudStorageURI.href;
     } else {
       url = await file.publicUrl();
+      url = this.transformGoogleCloudURLtoCDN(url);
     }
     return {
       url,
@@ -254,30 +292,27 @@ class CloudStorageService extends AbstractFileService implements IFileService {
     fileDetail: UploadStreamDescriptorWithPathType,
     arrayBuffer: WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>
   ): Promise<FileServiceUploadResult> {
+    //key for use identifier when client get this
+    const key = uuidv4();
     const buffer = Buffer.from(arrayBuffer);
     const stream = Readable.from(buffer);
     let fileName = fileDetail.name.replace(/\.[^/.]+$/, '');
+    const fileNameWithoutExtension = fileName;
     fileName = fileDetail.ext ? `${fileName}.${fileDetail.ext}` : fileName;
     //check file name don't have extension
     if (!fileDetail.ext && fileName.indexOf('.') === -1) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        'File name must have extension.'
-      );
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, 'File name must have extension.');
     }
-    const destination = `${fileDetail.path}/${fileName}`;
+    // Extracting the file name without the extension
+    const destination = `${key}/${fileNameWithoutExtension}/${fileName}`;
     //init file into the bucket *fileData.name include sub-bucket
-    const file = this.bucket_.file(destination);
-    const isPrivate = fileDetail?.isPrivate;
-    const options = {
-      metadata: {
-        predefinedAcl: isPrivate ? 'private' : 'publicRead'
-      },
-      private: isPrivate,
-      public: !isPrivate
-    };
+    const isPrivate = fileDetail?.isPrivate === undefined ? true : fileDetail.isPrivate;
+    const file = this.privateStorage_
+      .bucket(isPrivate ? this.privateBucketName_ : this.publicBucketName_)
+      .file(destination);
+
     //make file streaming
-    const pipe = stream.pipe(file.createWriteStream(options));
+    const pipe = stream.pipe(file.createWriteStream());
     const pass = new PassThrough();
     stream.pipe(pass);
     const promise = new Promise((res, rej) => {
@@ -291,6 +326,7 @@ class CloudStorageService extends AbstractFileService implements IFileService {
       url = file.cloudStorageURI.href;
     } else {
       url = await file.publicUrl();
+      url = this.transformGoogleCloudURLtoCDN(url);
     }
     return {
       url,

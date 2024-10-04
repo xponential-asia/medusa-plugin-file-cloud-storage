@@ -53,7 +53,7 @@
     "@types/express": "^4.17.13",
     "@types/jest": "^27.4.0",
     "@types/multer": "^1.4.7",
-    "@types/node": "^17.0.8",
+    "@types/node": "^20.0.0",
     "babel-preset-medusa-package": "^1.1.13",
     "codecov": "^3.8.3",
     "cross-env": "^7.0.3",

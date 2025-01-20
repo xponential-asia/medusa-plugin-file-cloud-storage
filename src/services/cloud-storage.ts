@@ -93,6 +93,11 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         MedusaError.Types.UNEXPECTED_STATE,
         error?.message || 'Upload file to bucket error.'
       );
+    } finally {
+      //remove file after upload
+      if (fs.existsSync(fileData.path)) {
+        fs.unlinkSync(fileData.path);
+      }
     }
   }
 
@@ -128,6 +133,11 @@ class CloudStorageService extends AbstractFileService implements IFileService {
         MedusaError.Types.UNEXPECTED_STATE,
         error?.message || 'Upload protected file to bucket error.'
       );
+    } finally {
+      //remove file after upload
+      if (fs.existsSync(fileData.path)) {
+        fs.unlinkSync(fileData.path);
+      }
     }
   }
 

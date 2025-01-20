@@ -35,6 +35,10 @@ describe('Cloud Storage Application Default credentials', () => {
       originalname: 'test-file-1.txt'
     } as Express.Multer.File;
 
+    //Mock fs existsSync, unlinkSync
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'unlinkSync').mockReturnValue();
+
     // Mock the implementation of uuidv4
     uuidv4.mockReturnValue('uuid-value');
 

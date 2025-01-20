@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.5.1...v1.5.2) (2025-01-20)
+
+
+### Bug Fixes
+
+* handle error with un-sync file path ([5b2721b](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/5b2721b7847010f99f05c376e351ae1e64bec846))
+
 ## [1.5.1](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.5.0...v1.5.1) (2024-07-04)
 
 

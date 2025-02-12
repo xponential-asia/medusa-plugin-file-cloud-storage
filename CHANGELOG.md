@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.5.2...v1.5.3) (2025-02-12)
+
+
+### Bug Fixes
+
+* upgrade required medusa core ([3317934](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/commit/3317934f487308606a4bea6e25c8f422711d4a11))
+
 ## [1.5.2](https://github.com/xponential-asia/medusa-plugin-file-cloud-storage/compare/v1.5.1...v1.5.2) (2025-01-20)
 
 
